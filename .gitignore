@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.angular/
+coverage/
+playwright-report/
+test-results/
+
+# Strapi
+apps/cms/.tmp/
+apps/cms/build/
+apps/cms/.strapi/
+apps/cms/public/uploads/*
+!apps/cms/public/uploads/.gitkeep
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Claude Code: settings locales no se versionan; agents y skills sí
+.claude/settings.local.json
+
+.DS_Store
