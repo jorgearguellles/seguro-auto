@@ -8,6 +8,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { type FormField, parseFormFields } from './schemas/form-field.schema';
+import { type Plan, parsePlans } from './schemas/plan.schema';
 
 export type Country = 'CO' | 'CL';
 
@@ -31,5 +32,24 @@ export class StrapiClient {
     return this.#http
       .get<unknown>(`/api/form-fields?${params.toString()}`)
       .pipe(map((raw) => parseFormFields(raw)));
+  }
+
+  /**
+   * Fetches published, active plans for the given country, sorted by order.
+   * Populate is exactly: coverages,benefits,country (ADR-007, ADR-008).
+   * AC-02.1, RN-02.2, RN-02.7
+   */
+  getPlans(country: Country): Observable<Plan[]> {
+    const params = new URLSearchParams({
+      'filters[country][code][$eq]': country,
+      'filters[active][$eq]': 'true',
+      'sort': 'order:asc',
+      'populate': 'coverages,benefits,country',
+      'publicationState': 'live',
+    });
+
+    return this.#http
+      .get<unknown>(`/api/plans?${params.toString()}`)
+      .pipe(map((raw) => parsePlans(raw)));
   }
 }

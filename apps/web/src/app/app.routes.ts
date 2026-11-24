@@ -3,10 +3,23 @@
  * /:country branch uses CanMatch guard (ADR-002).
  * WizardStore is provided per-route for lifecycle isolation (ADR-005).
  */
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { type Routes } from '@angular/router';
 import { countryGuard } from './country/country.guard';
-import { step2Guard } from './wizard/wizard-step.guard';
+import { step2Guard, step3Guard } from './wizard/wizard-step.guard';
 import { WizardStore } from './wizard/wizard.store';
+
+/**
+ * Placeholder component for step 3 (US-03 scope).
+ * Satisfies the route definition while US-03 is not yet implemented.
+ */
+@Component({
+  selector: 'app-summary-placeholder',
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<main><h1>Resumen y pago (próximamente)</h1></main>`,
+})
+class SummaryPlaceholderComponent {}
 
 export const routes: Routes = [
   {
@@ -38,6 +51,11 @@ export const routes: Routes = [
           import('./features/plans/plans.component').then(
             (m) => m.PlansComponent,
           ),
+      },
+      {
+        path: 'paso-3',
+        canActivate: [step3Guard],
+        component: SummaryPlaceholderComponent,
       },
     ],
   },
