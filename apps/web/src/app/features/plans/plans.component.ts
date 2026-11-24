@@ -514,11 +514,9 @@ export class PlansComponent implements OnInit, OnDestroy {
 
   /** aria-live announcement for screen readers (AC-02.10, AC-02.14). */
   readonly ariaStatusMessage = computed(() => {
-    switch (this.loadState()) {
-      case 'loading': return this.msgs['plans.loading'];
-      case 'empty': return this.msgs['plans.empty'];
-      default: return '';
-    }
+    // 'loading' needs an announcement since the spinner has no meaningful text for AT.
+    // 'empty' is handled by the visible role="status" container — no duplicate needed.
+    return this.loadState() === 'loading' ? this.msgs['plans.loading'] : '';
   });
 
   #loadSub?: Subscription;

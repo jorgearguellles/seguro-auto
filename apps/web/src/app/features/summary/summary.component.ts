@@ -537,16 +537,9 @@ export class SummaryComponent implements OnInit, OnDestroy {
 
   /** Aria announcement for screen readers (AC-03.14) */
   readonly ariaAnnouncement = computed(() => {
-    switch (this.pageState()) {
-      case 'loading':
-        return this.msgs['summary.loading'];
-      case 'error':
-        return this.msgs['summary.loadError'];
-      case 'confirmed':
-        return this.msgs['summary.confirmed'];
-      default:
-        return '';
-    }
+    // Only announce 'loading' — the error (role="alert") and confirmed (role="status aria-live")
+    // containers are live regions themselves; announcing here would create strict-mode duplicates.
+    return this.pageState() === 'loading' ? this.msgs['summary.loading'] : '';
   });
 
   readonly editDataUrl = computed(
