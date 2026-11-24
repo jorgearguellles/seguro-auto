@@ -1,0 +1,64 @@
+services:
+
+  # ---------------------------------------------------------------------------
+  # Strapi 5 CMS — SQLite, seed CO/CL runs in bootstrap (apps/cms/src/index.ts)
+  # Admin UI: http://localhost:1337/admin
+  # ---------------------------------------------------------------------------
+  cms:
+    build:
+      context: apps/cms
+    ports:
+      - "1337:1337"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 1337
+      # Dev-only placeholder secrets — do NOT use in production
+      APP_KEYS: "devDockerAppKey1_placeholder_xx,devDockerAppKey2_placeholder_xx"
+      API_TOKEN_SALT: "devDockerApiTokenSalt_placeholder_xxx"
+      ADMIN_JWT_SECRET: "devDockerAdminJwtSecret_placeholder_x"
+      TRANSFER_TOKEN_SALT: "devDockerTransferSalt_placeholder_xxx"
+      JWT_SECRET: "devDockerJwtSecret_placeholder_xxxxx"
+      DATABASE_FILENAME: "/app/.tmp/data.db"
+    volumes:
+      - cms_data:/app/.tmp   # persist SQLite across restarts
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:1337/_health"]
+      interval: 15s
+      timeout: 10s
+      start_period: 90s
+      retries: 10
+
+  # ---------------------------------------------------------------------------
+  # Angular 21 dev server — no proxy-config (nginx handles /api routing)
+  # ---------------------------------------------------------------------------
+  web:
+    build:
+      context: apps/web
+    # Override package.json "start" script to skip proxy-config
+    command: npx ng serve --host 0.0.0.0 --port 4201
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:4201/"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 12
+
+  # ---------------------------------------------------------------------------
+  # nginx — single entry point on :4200
+  # Strips Authorization header (ADR-003 D3) on all proxy passes
+  # Routes: /api/* → cms:1337  |  /* → web:4201
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "4200:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      web:
+        condition: service_healthy
+      cms:
+        condition: service_healthy
+
+volumes:
+  cms_data:
