@@ -2,7 +2,7 @@
 id: SPEC-03
 story: US-03
 title: Resumen de cotización y pago simulado
-status: draft
+status: approved
 version: 1
 approved_by:
 approved_at:
