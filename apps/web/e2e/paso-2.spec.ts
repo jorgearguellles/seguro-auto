@@ -5,24 +5,24 @@
  * No real Strapi instance is required.
  *
  * axe-core is injected per audit; violations at 'serious'/'critical' fail the test.
- * AC-02.16 keyboard-only test navigates without any mouse interaction.
+ * AC-02.14 keyboard-only test navigates without any mouse interaction.
  *
- * AC-02.1  — only active, published plans for the active country are shown
+ * AC-02.1  — only active, published plans for the active country are shown; ordered; active=false excluded
  * AC-02.2  — price formatted with currency symbol/code
  * AC-02.3  — vehicle older than 5 years triggers 10% surcharge + label
  * AC-02.4  — recommended=true plan shows "Recomendado" badge
  * AC-02.5  — clicking a plan marks it; "Continuar" is enabled
  * AC-02.6  — without selection "Continuar" is disabled
- * AC-02.7  — active=false plan does NOT appear in the list
+ * AC-02.7  — selecting a plan then navigating back from paso-3 preserves the selection
  * AC-02.8  — "Volver" navigates to paso-1 and form data is preserved
- * AC-02.9  — loading indicator visible while request is pending
- * AC-02.10 — network error shows error message + retry button
- * AC-02.11 — data:[] response shows empty state
- * AC-02.12 — plan without coverages is discarded by zod (AC-02.13 overlap)
- * AC-02.13 — plan with wrong currency is discarded by zod
- * AC-02.14 — axe finds no serious/critical violations in ready state
+ * AC-02.9  — navigating directly to paso-2 without paso-1 redirects to paso-1 (guard)
+ * AC-02.10 — loading indicator visible while request is pending
+ * AC-02.11 — network error shows error message + retry button
+ * AC-02.12 — data:[] response shows empty state
+ * AC-02.13 — plan without coverages is discarded by zod
+ * AC-02.14 — keyboard-only: Tab/arrows between plans, Space selects, Enter continues; axe audit
  * AC-02.15 — responsive: visible at 375px and 1280px viewport widths
- * AC-02.16 — keyboard-only: Tab/arrows between plans, Space selects, Enter continues
+ * AC-02.16 — plan with wrong currency is discarded by zod
  */
 import { test, expect, type Page, type Route } from '@playwright/test';
 import { CO_FIELDS_RESPONSE } from './fixtures/form-fields';
@@ -226,6 +226,22 @@ test.describe('AC-02.1 Plans of active country displayed', () => {
       .locator('[role="radio"] .plan-name')
       .allTextContents();
     expect(planNames).toEqual(['Básico', 'Estándar', 'Premium']);
+  });
+
+  test('AC-02.1 plan with active=false is NOT rendered in the list', async ({ page }) => {
+    await mockFieldsAndPlans(page, CO_PLANS_WITH_INACTIVE_RESPONSE);
+    await completePaso1(page);
+
+    // The active plans are visible
+    await expect(page.getByText('Básico')).toBeVisible();
+    await expect(page.getByText('Estándar')).toBeVisible();
+    await expect(page.getByText('Premium')).toBeVisible();
+
+    // The inactive plan must NOT appear
+    await expect(page.getByText('Plan Oculto')).not.toBeVisible();
+
+    // Exactly 3 radio items (the 3 active ones)
+    await expect(page.locator('[role="radio"]')).toHaveCount(3);
   });
 });
 
@@ -451,25 +467,43 @@ test.describe('AC-02.6 Continuar requires a selected plan', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.7 — active=false plan does not appear
+// AC-02.7 — Persistence of selection when navigating back from paso-3
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.7 Inactive plans not shown', () => {
-  test('AC-02.7 plan with active=false is NOT rendered in the list', async ({ page }) => {
-    await mockFieldsAndPlans(page, CO_PLANS_WITH_INACTIVE_RESPONSE);
-    await completePaso1(page);
+test.describe('AC-02.7 Selection persists when navigating back from paso-3', () => {
+  test(
+    'AC-02.7 selecting a plan and navigating back from paso-3 preserves selection',
+    async ({ page }) => {
+      await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
+      await completePaso1(page);
 
-    // The active plans are visible
-    await expect(page.getByText('Básico')).toBeVisible();
-    await expect(page.getByText('Estándar')).toBeVisible();
-    await expect(page.getByText('Premium')).toBeVisible();
+      // On paso-2: select the first plan card
+      const firstCard = page.locator('[role="radio"]').first();
+      await firstCard.click();
+      await expect(firstCard).toHaveAttribute('aria-checked', 'true');
 
-    // The inactive plan must NOT appear
-    await expect(page.getByText('Plan Oculto')).not.toBeVisible();
+      // SPA navigate FORWARD to paso-3 to keep WizardStore in memory
+      // (ADR-005 — no sessionStorage for PII; hard page.goto('/co/paso-3') resets Angular)
+      await page.evaluate(() => {
+        history.pushState({}, '', '/co/paso-3');
+        window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+      });
+      await expect(page).toHaveURL(/paso-3/);
 
-    // Exactly 3 radio items (the 3 active ones)
-    await expect(page.locator('[role="radio"]')).toHaveCount(3);
-  });
+      // SPA navigate BACK to paso-2
+      await page.evaluate(() => {
+        history.pushState({}, '', '/co/paso-2');
+        window.dispatchEvent(new PopStateEvent('popstate', { state: {} }));
+      });
+      await expect(page).toHaveURL(/paso-2/);
+
+      // The same plan card must still be selected (aria-checked="true")
+      await expect(firstCard).toHaveAttribute('aria-checked', 'true');
+
+      // Continuar must be enabled because a plan is selected
+      await expect(page.getByRole('button', { name: 'Continuar' })).not.toBeDisabled();
+    },
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -495,11 +529,27 @@ test.describe('AC-02.8 Volver to paso-1 preserves form data', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.9 — Loading indicator while request is pending
+// AC-02.9 — Guard: navigating directly to paso-2 without paso-1 redirects
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.9 Loading indicator while plans request is pending', () => {
-  test('AC-02.9 role=status element is visible while plans API has not responded', async ({
+test.describe('AC-02.9 Guard redirects to paso-1 when paso-1 is not completed', () => {
+  test(
+    'AC-02.9 navigating directly to /co/paso-2 without paso-1 redirects to /co/paso-1',
+    async ({ page }) => {
+      // Fresh page — no prior navigation, WizardStore.applicant() is null
+      // Hard navigation triggers the Angular router and step2Guard
+      await page.goto('/co/paso-2');
+      await expect(page).toHaveURL(/paso-1/);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// AC-02.10 — Loading indicator while request is pending
+// ---------------------------------------------------------------------------
+
+test.describe('AC-02.10 Loading indicator while plans request is pending', () => {
+  test('AC-02.10 role=status element is visible while plans API has not responded', async ({
     page,
   }) => {
     const fulfill = await mockPlansPending(page);
@@ -539,11 +589,11 @@ test.describe('AC-02.9 Loading indicator while plans request is pending', () => 
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.10 — Network error shows message and retry
+// AC-02.11 — Network error shows message and retry
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.10 Network error state', () => {
-  test('AC-02.10 plans 500 shows system error message and Reintentar button', async ({
+test.describe('AC-02.11 Network error state', () => {
+  test('AC-02.11 plans 500 shows system error message and Reintentar button', async ({
     page,
   }) => {
     await mockPlansError(page);
@@ -560,7 +610,7 @@ test.describe('AC-02.10 Network error state', () => {
     await expect(page.locator('[role="radiogroup"]')).not.toBeVisible();
   });
 
-  test('AC-02.10 clicking Reintentar triggers a new request', async ({ page }) => {
+  test('AC-02.11 clicking Reintentar triggers a new request', async ({ page }) => {
     let callCount = 0;
 
     await page.route(FIELDS_API_GLOB, async (route: Route) => {
@@ -601,11 +651,11 @@ test.describe('AC-02.10 Network error state', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.11 — Empty plans list shows empty state
+// AC-02.12 — Empty plans list shows empty state
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.11 Empty state when no plans', () => {
-  test('AC-02.11 data:[] response shows empty-state message and Continuar stays disabled', async ({
+test.describe('AC-02.12 Empty state when no plans', () => {
+  test('AC-02.12 data:[] response shows empty-state message and Continuar stays disabled', async ({
     page,
   }) => {
     await mockFieldsAndPlans(page, EMPTY_PLANS_RESPONSE);
@@ -625,11 +675,11 @@ test.describe('AC-02.11 Empty state when no plans', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.12 — Plan without coverages is discarded (zod min(1) on coverages)
+// AC-02.13 — Plan without coverages is discarded (zod min(1) on coverages)
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.12 Plan with empty coverages discarded by zod', () => {
-  test('AC-02.12 plan with coverages:[] is omitted; valid sibling plan renders', async ({
+test.describe('AC-02.13 Plan with empty coverages discarded by zod', () => {
+  test('AC-02.13 plan with coverages:[] is omitted; valid sibling plan renders', async ({
     page,
   }) => {
     await mockFieldsAndPlans(page, CO_PLANS_NO_COVERAGES_RESPONSE);
@@ -645,7 +695,7 @@ test.describe('AC-02.12 Plan with empty coverages discarded by zod', () => {
     await expect(page.locator('[role="radio"]')).toHaveCount(1);
   });
 
-  test('AC-02.12 when all plans have no coverages the empty state is shown', async ({ page }) => {
+  test('AC-02.13 when all plans have no coverages the empty state is shown', async ({ page }) => {
     // All-invalid payload: only the plan with no coverages, no valid sibling
     const allInvalidPayload = {
       data: [CO_PLANS_NO_COVERAGES_RESPONSE.data[0]], // only the invalid one
@@ -660,32 +710,109 @@ test.describe('AC-02.12 Plan with empty coverages discarded by zod', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.13 — Plan with wrong currency discarded by zod
+// AC-02.14 — Keyboard-only navigation and axe audit
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.13 Plan with currency mismatch discarded by zod', () => {
-  test('AC-02.13 CO plan with currency=CLP is omitted; valid sibling renders', async ({
+test.describe('AC-02.14 Keyboard-only navigation and accessibility', () => {
+  test(
+    'AC-02.14 Tab reaches plans, Space selects, Tab to Continuar, Enter navigates',
+    async ({ page }) => {
+      await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
+
+      // Complete paso-1 with keyboard only (no mouse)
+      await page.goto('/co/paso-1');
+      await expect(page.getByRole('status')).not.toBeVisible();
+
+      await page.getByLabel('Nombre completo').focus();
+      await page.keyboard.type('Pedro Rodriguez');
+      await page.keyboard.press('Tab');
+      await page.keyboard.type('98765432');
+      await page.keyboard.press('Tab');
+      await page.keyboard.type('XYZ789');
+      await page.keyboard.press('Tab');
+      await page.keyboard.type(String(new Date().getFullYear()));
+      await page.keyboard.press('Tab'); // focus Marca del vehículo
+      await page.keyboard.press('t');  // jump to Toyota by letter
+      await page.keyboard.press('Tab'); // focus Continuar button
+      await expect(page.getByRole('button', { name: 'Continuar' })).toBeFocused();
+      await page.keyboard.press('Enter'); // navigate to paso-2
+
+      await expect(page).toHaveURL(/paso-2/);
+
+      // Focus the first plan card via Tab (from wherever focus lands after navigation)
+      const firstCard = page.locator('[role="radio"]').first();
+      await firstCard.focus();
+
+      // Space selects the focused plan
+      await page.keyboard.press('Space');
+      await expect(firstCard).toHaveAttribute('aria-checked', 'true');
+
+      // Tab to the Volver button, then Tab again to Continuar
+      await page.keyboard.press('Tab'); // may land on Volver or second radio
+      // Tab through remaining radios and buttons to reach Continuar
+      // We tab until Continuar is focused (max 10 presses to avoid infinite loop)
+      let continuar = page.getByRole('button', { name: 'Continuar' });
+      let isFocused = false;
+      for (let i = 0; i < 10 && !isFocused; i++) {
+        isFocused = await continuar.evaluate((el) => document.activeElement === el);
+        if (!isFocused) await page.keyboard.press('Tab');
+      }
+      await expect(continuar).toBeFocused();
+
+      // Enter submits / navigates to paso-3
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/paso-3/);
+    },
+  );
+
+  test('AC-02.14 arrow keys navigate between radio items (WAI-ARIA radiogroup behavior)', async ({
     page,
   }) => {
-    await mockFieldsAndPlans(page, CO_PLANS_WRONG_CURRENCY_RESPONSE);
+    await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
     await completePaso1(page);
 
-    // The plan with wrong currency must NOT appear
-    await expect(page.getByText('Plan Moneda Incorrecta')).not.toBeVisible();
+    // Focus and select the first plan card with Space
+    const firstCard = page.locator('[role="radio"]').first();
+    await firstCard.focus();
+    await expect(firstCard).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(firstCard).toHaveAttribute('aria-checked', 'true');
 
-    // The valid plan is shown
-    await expect(page.getByText('Plan Válido')).toBeVisible();
+    // ArrowRight moves focus AND selection to the next card (WAI-ARIA radiogroup)
+    await page.keyboard.press('ArrowRight');
+    const secondCard = page.locator('[role="radio"]').nth(1);
+    await expect(secondCard).toBeFocused();
+    await expect(secondCard).toHaveAttribute('aria-checked', 'true');
+    await expect(firstCard).toHaveAttribute('aria-checked', 'false');
 
-    // Only 1 radio (the valid plan)
-    await expect(page.locator('[role="radio"]')).toHaveCount(1);
+    // ArrowDown also moves focus AND selection to the next card
+    await page.keyboard.press('ArrowDown');
+    const thirdCard = page.locator('[role="radio"]').nth(2);
+    await expect(thirdCard).toBeFocused();
+    await expect(thirdCard).toHaveAttribute('aria-checked', 'true');
+
+    // ArrowLeft moves focus AND selection back to the previous card
+    await page.keyboard.press('ArrowLeft');
+    await expect(secondCard).toBeFocused();
+    await expect(secondCard).toHaveAttribute('aria-checked', 'true');
+    await expect(thirdCard).toHaveAttribute('aria-checked', 'false');
   });
-});
 
-// ---------------------------------------------------------------------------
-// AC-02.14 — axe: no serious/critical violations in ready state
-// ---------------------------------------------------------------------------
+  test('AC-02.14 axe audit during keyboard-driven ready state', async ({ page }) => {
+    await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
+    await completePaso1(page);
 
-test.describe('AC-02.14 Accessibility — axe audit', () => {
+    await expect(page.getByText('Básico')).toBeVisible();
+
+    // Select a plan with keyboard
+    const firstCard = page.locator('[role="radio"]').first();
+    await firstCard.focus();
+    await page.keyboard.press('Space');
+
+    // Run axe with a plan selected
+    await runAxe(page);
+  });
+
   test('AC-02.14 ready state has no serious/critical axe violations', async ({ page }) => {
     await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
     await completePaso1(page);
@@ -806,97 +933,23 @@ test.describe('AC-02.15 Responsive layout', () => {
 });
 
 // ---------------------------------------------------------------------------
-// AC-02.16 — Keyboard-only navigation
+// AC-02.16 — Plan with wrong currency discarded by zod
 // ---------------------------------------------------------------------------
 
-test.describe('AC-02.16 Keyboard-only navigation', () => {
-  test(
-    'AC-02.16 Tab reaches plans, Space selects, Tab to Continuar, Enter navigates',
-    async ({ page }) => {
-      await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
-
-      // Complete paso-1 with keyboard only (no mouse)
-      await page.goto('/co/paso-1');
-      await expect(page.getByRole('status')).not.toBeVisible();
-
-      await page.getByLabel('Nombre completo').focus();
-      await page.keyboard.type('Pedro Rodriguez');
-      await page.keyboard.press('Tab');
-      await page.keyboard.type('98765432');
-      await page.keyboard.press('Tab');
-      await page.keyboard.type('XYZ789');
-      await page.keyboard.press('Tab');
-      await page.keyboard.type(String(new Date().getFullYear()));
-      await page.keyboard.press('Tab'); // focus Marca del vehículo
-      await page.keyboard.press('t');  // jump to Toyota by letter
-      await page.keyboard.press('Tab'); // focus Continuar button
-      await expect(page.getByRole('button', { name: 'Continuar' })).toBeFocused();
-      await page.keyboard.press('Enter'); // navigate to paso-2
-
-      await expect(page).toHaveURL(/paso-2/);
-
-      // Focus the first plan card via Tab (from wherever focus lands after navigation)
-      const firstCard = page.locator('[role="radio"]').first();
-      await firstCard.focus();
-
-      // Space selects the focused plan
-      await page.keyboard.press('Space');
-      await expect(firstCard).toHaveAttribute('aria-checked', 'true');
-
-      // Tab to the Volver button, then Tab again to Continuar
-      await page.keyboard.press('Tab'); // may land on Volver or second radio
-      // Tab through remaining radios and buttons to reach Continuar
-      // We tab until Continuar is focused (max 10 presses to avoid infinite loop)
-      let continuar = page.getByRole('button', { name: 'Continuar' });
-      let isFocused = false;
-      for (let i = 0; i < 10 && !isFocused; i++) {
-        isFocused = await continuar.evaluate((el) => document.activeElement === el);
-        if (!isFocused) await page.keyboard.press('Tab');
-      }
-      await expect(continuar).toBeFocused();
-
-      // Enter submits / navigates to paso-3
-      await page.keyboard.press('Enter');
-      await expect(page).toHaveURL(/paso-3/);
-    },
-  );
-
-  test('AC-02.16 Arrow keys navigate between radio items (radiogroup behavior)', async ({
+test.describe('AC-02.16 Plan with currency mismatch discarded by zod', () => {
+  test('AC-02.16 CO plan with currency=CLP is omitted; valid sibling renders', async ({
     page,
   }) => {
-    await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
+    await mockFieldsAndPlans(page, CO_PLANS_WRONG_CURRENCY_RESPONSE);
     await completePaso1(page);
 
-    // Focus the first plan card
-    const firstCard = page.locator('[role="radio"]').first();
-    await firstCard.focus();
-    await expect(firstCard).toBeFocused();
+    // The plan with wrong currency must NOT appear
+    await expect(page.getByText('Plan Moneda Incorrecta')).not.toBeVisible();
 
-    // Space selects the first plan
-    await page.keyboard.press('Space');
-    await expect(firstCard).toHaveAttribute('aria-checked', 'true');
+    // The valid plan is shown
+    await expect(page.getByText('Plan Válido')).toBeVisible();
 
-    // Tab to the second plan card and select with Enter
-    await page.keyboard.press('Tab');
-    const secondCard = page.locator('[role="radio"]').nth(1);
-    await expect(secondCard).toBeFocused();
-    await page.keyboard.press('Enter');
-    await expect(secondCard).toHaveAttribute('aria-checked', 'true');
-    await expect(firstCard).toHaveAttribute('aria-checked', 'false');
-  });
-
-  test('AC-02.16 axe audit during keyboard-driven ready state', async ({ page }) => {
-    await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
-    await completePaso1(page);
-
-    await expect(page.getByText('Básico')).toBeVisible();
-
-    // Select a plan with keyboard
-    const firstCard = page.locator('[role="radio"]').first();
-    await firstCard.focus();
-    await page.keyboard.press('Space');
-
-    // Run axe with a plan selected
-    await runAxe(page);
+    // Only 1 radio (the valid plan)
+    await expect(page.locator('[role="radio"]')).toHaveCount(1);
   });
 });
