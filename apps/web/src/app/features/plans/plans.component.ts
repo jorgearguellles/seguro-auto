@@ -5,6 +5,8 @@
  * Plan selection persists in WizardStore (AC-02.5, AC-02.7, RN-02.5).
  * Price adjustment based on vehicle year (AC-02.3, RN-02.4).
  * Accessible: role="radiogroup" + role="radio" + aria-checked (G-02.8, AC-02.14).
+ * Roving tabindex + arrow key navigation (F-02-1.2).
+ * aria-labelledby for plan cards (F-02-1.3).
  * Responsive: 375px (single column) / 1280px (3-column grid) (AC-02.15).
  * AC-02.1, AC-02.2, AC-02.3, AC-02.4, AC-02.5, AC-02.6, AC-02.7, AC-02.8,
  * AC-02.9, AC-02.10, AC-02.11, AC-02.12, AC-02.13, AC-02.14, AC-02.15, AC-02.16
@@ -12,8 +14,11 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   OnDestroy,
   OnInit,
+  QueryList,
+  ViewChildren,
   computed,
   inject,
   signal,
@@ -86,35 +91,47 @@ type LoadState = 'loading' | 'error' | 'empty' | 'ready';
             aria-labelledby="plans-title"
             class="plans-grid"
           >
-            @for (plan of plans(); track plan.documentId) {
+            @for (plan of plans(); track plan.documentId; let i = $index) {
               <div
+                #planCard
                 role="radio"
                 [attr.aria-checked]="isSelected(plan) ? 'true' : 'false'"
-                [attr.aria-label]="plan.name"
+                [attr.aria-labelledby]="plan.recommended
+                  ? 'plan-name-' + plan.documentId + ' plan-badge-' + plan.documentId + ' plan-price-' + plan.documentId
+                  : 'plan-name-' + plan.documentId + ' plan-price-' + plan.documentId"
                 [class.plan-card]="true"
                 [class.plan-card--selected]="isSelected(plan)"
                 [class.plan-card--recommended]="plan.recommended"
-                tabindex="0"
-                (click)="selectPlan(plan)"
-                (keydown.enter)="selectPlan(plan)"
-                (keydown.space)="onSpaceKey($event, plan)"
+                [attr.tabindex]="getFocusedTabIndex(i)"
+                (click)="selectAndFocus(plan, i)"
+                (keydown.enter)="selectAndFocus(plan, i)"
+                (keydown.space)="onSpaceKey($event, plan, i)"
+                (keydown.arrowright)="moveFocus($event, i, +1)"
+                (keydown.arrowdown)="moveFocus($event, i, +1)"
+                (keydown.arrowleft)="moveFocus($event, i, -1)"
+                (keydown.arrowup)="moveFocus($event, i, -1)"
+                (keydown.home)="moveFocusTo($event, 0)"
+                (keydown.end)="moveFocusTo($event, plans().length - 1)"
               >
                 <!-- Recommended badge (AC-02.4, RN-02.6) -->
                 @if (plan.recommended) {
-                  <span class="badge badge--recommended" aria-label="{{ msgs['plans.recommended'] }}">
+                  <span
+                    [id]="'plan-badge-' + plan.documentId"
+                    class="badge badge--recommended"
+                  >
                     {{ msgs['plans.recommended'] }}
                   </span>
                 }
 
                 <!-- Plan header -->
                 <div class="plan-header">
-                  <h2 class="plan-name">{{ plan.name }}</h2>
+                  <h2 [id]="'plan-name-' + plan.documentId" class="plan-name">{{ plan.name }}</h2>
                   <p class="plan-description">{{ plan.shortDescription }}</p>
                 </div>
 
                 <!-- Price (AC-02.2, AC-02.3) -->
                 <div class="plan-price">
-                  <span class="price-amount">{{ finalPrice(plan) }}</span>
+                  <span [id]="'plan-price-' + plan.documentId" class="price-amount">{{ finalPrice(plan) }}</span>
                   @if (isPriceAdjusted(plan)) {
                     <span class="price-adjusted-label">
                       {{ msgs['plans.priceAdjustedLabel'] }}
@@ -502,9 +519,18 @@ export class PlansComponent implements OnInit, OnDestroy {
   readonly #wizardStore = inject(WizardStore);
   readonly #router = inject(Router);
 
+  /** Query list of plan card DOM elements for roving tabindex focus management (F-02-1.2). */
+  @ViewChildren('planCard') planCards!: QueryList<ElementRef<HTMLElement>>;
+
   readonly loadState = signal<LoadState>('loading');
   readonly plans = signal<Plan[]>([]);
   readonly selectionCleared = signal(false);
+
+  /**
+   * Index of the plan card that currently holds tabindex="0" (roving tabindex, F-02-1.2).
+   * Initial state: 0 when nothing is selected; index of selected plan when one exists.
+   */
+  readonly focusedPlanIndex = signal(0);
 
   /** Currently selected plan documentId (from WizardStore — AC-02.5, AC-02.7). */
   readonly selectedPlanId = computed(() => this.#wizardStore.selectedPlanId());
@@ -548,11 +574,17 @@ export class PlansComponent implements OnInit, OnDestroy {
         // G-02.11: if stored selectedPlanId is no longer in the list, clear it
         const storedId = this.#wizardStore.selectedPlanId();
         if (storedId !== null) {
-          const stillExists = plans.some((p) => p.documentId === storedId);
-          if (!stillExists) {
+          const storedIndex = plans.findIndex((p) => p.documentId === storedId);
+          if (storedIndex === -1) {
             this.#wizardStore.clearPlan();
             this.selectionCleared.set(true);
+            this.focusedPlanIndex.set(0);
+          } else {
+            // Sync focused index to the previously selected plan (AC-02.7, F-02-1.2).
+            this.focusedPlanIndex.set(storedIndex);
           }
+        } else {
+          this.focusedPlanIndex.set(0);
         }
 
         this.loadState.set('ready');
@@ -568,16 +600,66 @@ export class PlansComponent implements OnInit, OnDestroy {
     return this.selectedPlanId() === plan.documentId;
   }
 
+  /**
+   * Returns "0" for the focused plan card and "-1" for all others (roving tabindex, F-02-1.2).
+   * WAI-ARIA radiogroup pattern: only one item reachable via Tab at a time.
+   */
+  getFocusedTabIndex(index: number): string {
+    return this.focusedPlanIndex() === index ? '0' : '-1';
+  }
+
+  /**
+   * Selects a plan and updates the focused index (AC-02.5, AC-02.7, RN-02.5, F-02-1.2).
+   * Used by click and Enter handlers.
+   */
+  selectAndFocus(plan: Plan, index: number): void {
+    this.focusedPlanIndex.set(index);
+    this.#wizardStore.selectPlan(plan);
+    this.selectionCleared.set(false);
+  }
+
   /** Selects a plan and stores it in WizardStore (AC-02.5, AC-02.7, RN-02.5). */
   selectPlan(plan: Plan): void {
     this.#wizardStore.selectPlan(plan);
     this.selectionCleared.set(false);
   }
 
-  /** Handle Space key — prevent default scroll and select (AC-02.14). */
-  onSpaceKey(event: Event, plan: Plan): void {
+  /** Handle Space key — prevent default scroll, select, and update focused index (AC-02.14, F-02-1.2). */
+  onSpaceKey(event: Event, plan: Plan, index: number): void {
     event.preventDefault();
-    this.selectPlan(plan);
+    this.selectAndFocus(plan, index);
+  }
+
+  /**
+   * Moves focus (and selection) by delta steps in the plan list, wrapping around.
+   * Implements roving tabindex Arrow key navigation (F-02-1.2, AC-02.14).
+   */
+  moveFocus(event: Event, currentIndex: number, delta: number): void {
+    event.preventDefault();
+    const plans = this.plans();
+    if (plans.length === 0) return;
+    const newIndex = (currentIndex + delta + plans.length) % plans.length;
+    this.focusedPlanIndex.set(newIndex);
+    this.selectPlan(plans[newIndex]);
+    // Focus the DOM element after Angular updates the tabindex attribute.
+    setTimeout(() => {
+      this.planCards.toArray()[newIndex]?.nativeElement.focus();
+    }, 0);
+  }
+
+  /**
+   * Moves focus (and selection) directly to a target index (Home/End keys, F-02-1.2).
+   */
+  moveFocusTo(event: Event, targetIndex: number): void {
+    event.preventDefault();
+    const plans = this.plans();
+    if (plans.length === 0) return;
+    const safeIndex = Math.max(0, Math.min(targetIndex, plans.length - 1));
+    this.focusedPlanIndex.set(safeIndex);
+    this.selectPlan(plans[safeIndex]);
+    setTimeout(() => {
+      this.planCards.toArray()[safeIndex]?.nativeElement.focus();
+    }, 0);
   }
 
   /**
