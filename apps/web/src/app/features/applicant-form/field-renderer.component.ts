@@ -248,8 +248,10 @@ export class FieldRendererComponent implements OnInit, OnDestroy {
     this.#statusSub = ctrl.statusChanges.subscribe(() => {
       this.#updateErrorState();
 
-      // RN-01.14: once first error appears, switch to 'change' mode
-      if (!this.#hasShownError && ctrl.invalid && ctrl.touched) {
+      // RN-01.14: once first error appears, switch to 'change' mode.
+      // Note: markAsTouched() fires AFTER statusChanges.next(), so ctrl.touched is false here.
+      // Use isInvalid() (which checks dirty || touched) to reliably detect first error.
+      if (!this.#hasShownError && this.isInvalid()) {
         this.#hasShownError = true;
         this.#promoteToChangeMode();
       }
@@ -293,30 +295,36 @@ export class FieldRendererComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Replaces the current control with a 'change' updateOn mode control.
-   * This is needed because updateOn cannot be changed on an existing control.
-   * ADR-004 §Estrategia blur → change tras error.
+   * After first validation error, switches to live re-validation on each input/change event.
+   * Avoids replacing the FormControl (which requires CD rebinding before the next fill() arrives).
+   * Instead, attaches native DOM listeners that call ctrl.setValue() directly — bypasses
+   * updateOn:'blur' and re-runs validators on every keystroke. ADR-004 §Estrategia blur → change.
    */
   #promoteToChangeMode(): void {
+    const nativeEl = this.inputRef()?.nativeElement as HTMLInputElement | HTMLSelectElement | null;
+    if (!nativeEl) return;
+
     const ctrl = this.control;
-    const group = this.formGroup();
-    const key = this.field().key;
 
-    const newCtrl = new FormControl(ctrl.value, {
-      validators: ctrl.validator ?? undefined,
-      updateOn: 'change',
-    });
+    const onValueEvent = () => {
+      const value =
+        nativeEl instanceof HTMLInputElement && nativeEl.type === 'checkbox'
+          ? nativeEl.checked
+          : (nativeEl as HTMLInputElement | HTMLSelectElement).value;
+      ctrl.setValue(value, { emitEvent: true });
+    };
 
-    // Preserve touched/dirty state
-    if (ctrl.touched) newCtrl.markAsTouched();
-    if (ctrl.dirty) newCtrl.markAsDirty();
+    nativeEl.addEventListener('input', onValueEvent);
+    nativeEl.addEventListener('change', onValueEvent);
 
-    group.setControl(key, newCtrl);
-
-    // Re-subscribe to the new control
+    // Keep watching status; clean up native listeners on unsubscribe
     this.#statusSub?.unsubscribe();
-    this.#statusSub = newCtrl.statusChanges.subscribe(() => {
+    this.#statusSub = ctrl.statusChanges.subscribe(() => {
       this.#updateErrorState();
+    });
+    this.#statusSub.add(() => {
+      nativeEl.removeEventListener('input', onValueEvent);
+      nativeEl.removeEventListener('change', onValueEvent);
     });
   }
 

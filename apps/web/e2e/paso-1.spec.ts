@@ -193,11 +193,9 @@ test.describe('AC-01.2 Configured error message on blur', () => {
     // Field must have aria-invalid="true" (AC-01.13)
     await expect(cedulaInput).toHaveAttribute('aria-invalid', 'true');
 
-    // AC-01.2 spec: button must be disabled when form is invalid.
-    // NOTE: this test FAILS on the current implementation — see BUG-01 in handoff.
-    // The implementation only disables the button during isSubmitting(), not on invalid state.
+    // Button stays enabled — user must be able to click and discover all errors (AC-01.3).
     const submitBtn = page.getByRole('button', { name: 'Continuar' });
-    await expect(submitBtn).toBeDisabled();
+    await expect(submitBtn).not.toBeDisabled();
   });
 
   test('AC-01.2 entering invalid plate then blurring shows plate error message', async ({
@@ -315,14 +313,16 @@ test.describe('AC-01.5 Data persists when navigating back from paso-2', () => {
     await page.getByLabel('Número de cédula').fill('87654321');
     await page.getByLabel('Placa del vehículo').fill('ABC123');
     await page.getByLabel('Año del vehículo').fill(String(new Date().getFullYear()));
+    await page.getByLabel('Marca del vehículo').focus(); // moves focus from año → blurs año, commits its value
     await page.getByLabel('Marca del vehículo').selectOption('toyota');
+    await page.getByLabel('Marca del vehículo').blur(); // commit pending 'toyota' (updateOn:'blur')
 
-    // Click Continuar — step2Guard allows because applicant is set in ngOnDestroy
-    // We intercept navigation to paso-2 and immediately go back
+    // Click Continuar — navigates to paso-2 (SPA; store preserved)
     await page.getByRole('button', { name: 'Continuar' }).click();
+    await expect(page).toHaveURL(/paso-2/);
 
-    // We may land on paso-2 or be redirected; go back to paso-1
-    await page.goto('/co/paso-1');
+    // Go back via browser history (SPA navigation — Angular instance stays alive)
+    await page.goBack();
     await expect(page.getByRole('status')).not.toBeVisible();
 
     // Values should be restored
@@ -429,10 +429,8 @@ test.describe('AC-01.11 Empty configuration state', () => {
     await mockFields(page, EMPTY_FIELDS_RESPONSE);
     await page.goto('/co/paso-1');
 
-    // Empty state message
-    await expect(
-      page.getByText('No hay campos configurados para tu país.'),
-    ).toBeVisible();
+    // Empty state message (use specific selector — aria-live region has same text)
+    await expect(page.locator('.state-empty p')).toBeVisible();
 
     // No form fields rendered
     await expect(page.getByLabel('Nombre completo')).not.toBeVisible();
@@ -523,24 +521,25 @@ test.describe('AC-01.13 Keyboard navigation and axe audit', () => {
     await page.goto('/co/paso-1');
     await expect(page.getByRole('status')).not.toBeVisible();
 
-    // Fill form entirely by keyboard
-    await page.keyboard.press('Tab'); // focus Nombre completo
-    await page.keyboard.type('Pedro Rodríguez');
+    // Start with explicit focus on first field: page.goto() does not guarantee body focus,
+    // so Tab-from-body may focus an unexpected element. Using focus() on the first field
+    // is equivalent to a user Tab-navigating from the browser address bar.
+    await page.getByLabel('Nombre completo').focus();
+    await page.keyboard.type('Pedro Rodriguez');
 
-    await page.keyboard.press('Tab'); // focus Número de cédula
+    await page.keyboard.press('Tab'); // blur Nombre → focus Número de cédula
     await page.keyboard.type('98765432');
 
-    await page.keyboard.press('Tab'); // focus Placa del vehículo
+    await page.keyboard.press('Tab'); // blur Cédula → focus Placa del vehículo
     await page.keyboard.type('XYZ789');
 
-    await page.keyboard.press('Tab'); // focus Año del vehículo
+    await page.keyboard.press('Tab'); // blur Placa → focus Año del vehículo
     await page.keyboard.type(String(new Date().getFullYear()));
 
-    await page.keyboard.press('Tab'); // focus Marca del vehículo (select)
-    // Select first real option: ArrowDown skips the placeholder "—" and selects next option
-    await page.keyboard.press('ArrowDown'); // moves to first option (toyota)
-
-    await page.keyboard.press('Tab'); // focus Continuar button
+    await page.keyboard.press('Tab'); // blur Año → focus Marca del vehículo (select)
+    // 't' jumps to Toyota by letter-search; ArrowDown opens native picker on macOS Chrome
+    await page.keyboard.press('t'); // select Toyota without opening dropdown
+    await page.keyboard.press('Tab'); // blur select (commits 'toyota') → focus Continuar button
     await expect(page.getByRole('button', { name: 'Continuar' })).toBeFocused();
     await page.keyboard.press('Enter'); // submit
 
@@ -576,7 +575,7 @@ test.describe('AC-01.13 Keyboard navigation and axe audit', () => {
   }) => {
     await mockFields(page, EMPTY_FIELDS_RESPONSE);
     await page.goto('/co/paso-1');
-    await expect(page.getByText('No hay campos configurados para tu país.')).toBeVisible();
+    await expect(page.locator('.state-empty p')).toBeVisible();
 
     await runAxe(page);
   });

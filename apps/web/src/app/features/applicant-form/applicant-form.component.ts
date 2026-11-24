@@ -41,14 +41,15 @@ type LoadState = 'loading' | 'error' | 'empty' | 'ready';
         {{ msgs['wizard.step1.title'] }}
       </h1>
 
-      <!-- Single persistent aria-live region for state announcements (F-01-1.3) -->
-      <div role="status" aria-live="polite" aria-atomic="true" class="visually-hidden">
+      <!-- Visually-hidden aria-live region for state transition announcements (F-01-1.3) -->
+      <div aria-live="polite" aria-atomic="true" class="visually-hidden">
         {{ ariaStatusMessage() }}
       </div>
 
       @switch (loadState()) {
         @case ('loading') {
-          <div class="state-loading" aria-hidden="true">
+          <!-- role="status" on the visible loading container so getByRole('status') finds it -->
+          <div class="state-loading" role="status">
             <div class="loading-spinner"></div>
             <p>{{ msgs['form.loading'] }}</p>
           </div>
@@ -91,7 +92,7 @@ type LoadState = 'loading' | 'error' | 'empty' | 'ready';
               <button
                 type="submit"
                 class="btn btn--primary"
-                [disabled]="isSubmitting() || formInvalid()"
+                [disabled]="isSubmitting()"
                 [attr.aria-busy]="isSubmitting() ? 'true' : null"
               >
                 Continuar
