@@ -5,6 +5,8 @@ RUN apk add --no-cache curl
 WORKDIR /app
 
 COPY package*.json ./
+# node:22-alpine ships npm 10; upgrade to 12 so allowScripts is honoured
+RUN npm install -g npm@12
 RUN npm install
 
 COPY . .

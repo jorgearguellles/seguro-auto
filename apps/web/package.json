@@ -29,6 +29,7 @@
     "@angular-eslint/builder": "^21.0.0",
     "@angular-eslint/eslint-plugin": "^21.0.0",
     "@angular-eslint/eslint-plugin-template": "^21.0.0",
+    "@angular-devkit/build-angular": "^21.0.0",
     "@angular/cli": "^21.0.0",
     "@angular/compiler-cli": "^21.0.0",
     "@playwright/test": "^1.48.0",
@@ -43,7 +44,11 @@
     "zone.js": "~0.15.0"
   },
   "allowScripts": {
+    "fsevents@2.3.3": true,
+    "@parcel/watcher@2.6.0": true,
+    "lmdb@3.5.1": true,
+    "msgpackr-extract@3.0.7": true,
     "esbuild@0.21.5": true,
-    "fsevents@2.3.3": true
+    "esbuild@0.28.1": true
   }
 }

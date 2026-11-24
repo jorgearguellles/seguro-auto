@@ -145,10 +145,14 @@ type RawFormField = z.infer<typeof formFieldSchema>;
 /**
  * FormField is the domain type used by the renderer and form-builder.
  * validations is re-typed to ParsedValidation[] after sanitization.
+ * Uses a mapped type over each variant to preserve the discriminated union
+ * so TypeScript can narrow f.options after `if (f.type !== 'select')`.
  */
-export type FormField = Omit<RawFormField, 'validations'> & {
-  validations: ParsedValidation[];
-};
+export type FormField = {
+  [K in RawFormField['type']]: Omit<Extract<RawFormField, { type: K }>, 'validations'> & {
+    validations: ParsedValidation[];
+  };
+}[RawFormField['type']];
 
 // ---- Tolerant top-level parser (AC-01.12) ----
 

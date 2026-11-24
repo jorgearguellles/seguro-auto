@@ -1,14 +1,14 @@
 import path from 'path';
 
+const dbFile = process.env.DATABASE_FILENAME ?? '.tmp/data.db';
+
 export default () => ({
   connection: {
-    client: 'better-sqlite3',
+    client: 'sqlite',
     connection: {
-      filename: path.join(
-        __dirname,
-        '..',
-        process.env.DATABASE_FILENAME ?? '.tmp/data.db'
-      ),
+      filename: path.isAbsolute(dbFile)
+        ? dbFile
+        : path.join(__dirname, '..', dbFile),
     },
     useNullAsDefault: true,
   },
