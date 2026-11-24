@@ -23,6 +23,24 @@ export const SYSTEM_MESSAGES = {
   'plans.volver': 'Volver',
   // AC-02.11 / G-02.11 — selection cleared because plan was unpublished
   'plans.selectionCleared': 'El plan que tenías seleccionado ya no está disponible.',
+  // Step 3 — summary and simulated payment (SPEC-03, ADR-010 G-03.9)
+  'summary.title': 'Resumen y pago',
+  'summary.yourData': 'Tus datos',
+  'summary.yourPlan': 'Plan elegido',
+  'summary.price': 'Precio final',
+  'summary.terms': 'Términos y condiciones',
+  'summary.accept': 'Acepto los términos y condiciones',
+  'summary.pay': 'Pagar',
+  'summary.paying': 'Procesando pago…',
+  'summary.payError': 'No pudimos completar el pago. Por favor intenta nuevamente.',
+  'summary.retry': 'Reintentar pago',
+  'summary.confirmed': 'Tu cotización ha sido confirmada',
+  'summary.quoteNumber': 'Número de cotización',
+  'summary.back': 'Cambiar plan',
+  'summary.editData': 'Editar datos',
+  'summary.loading': 'Cargando términos y condiciones...',
+  'summary.loadError': 'No pudimos cargar los términos. Intenta nuevamente.',
+  'summary.loadRetry': 'Reintentar',
 } as const;
 
 export type SystemMessageKey = keyof typeof SYSTEM_MESSAGES;

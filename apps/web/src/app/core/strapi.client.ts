@@ -9,6 +9,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { type FormField, parseFormFields } from './schemas/form-field.schema';
 import { type Plan, parsePlans } from './schemas/plan.schema';
+import { type TermsDocument, parseTerms } from './schemas/terms.schema';
 
 export type Country = 'CO' | 'CL';
 
@@ -51,5 +52,24 @@ export class StrapiClient {
     return this.#http
       .get<unknown>(`/api/plans?${params.toString()}`)
       .pipe(map((raw) => parsePlans(raw)));
+  }
+
+  /**
+   * Fetches the most recent published terms document for the given country.
+   * Query: sort=effectiveDate:desc,updatedAt:desc, limit=1 (ADR-009 D2-A, ADR-011).
+   * Returns null if no document published or response is invalid (AC-03.12).
+   * AC-03.3, AC-03.10, AC-03.11, AC-03.12
+   */
+  getTerms(country: Country): Observable<TermsDocument | null> {
+    const params = new URLSearchParams({
+      'filters[country][code][$eq]': country,
+      'sort': 'effectiveDate:desc,updatedAt:desc',
+      'pagination[limit]': '1',
+      'populate[country]': 'true',
+    });
+
+    return this.#http
+      .get<unknown>(`/api/terms?${params.toString()}`)
+      .pipe(map((raw) => parseTerms(raw)));
   }
 }

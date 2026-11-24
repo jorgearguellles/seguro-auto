@@ -50,6 +50,7 @@ describe('AC-01.5 WizardStore', () => {
     expect(store.applicantFieldsSnapshot()).toBeNull();
     expect(store.selectedPlanId()).toBeNull();
     expect(store.quote()).toBeNull();
+    expect(store.quoteNumber()).toBeNull();
   });
 
   it('RN-01.13 does not write to localStorage', () => {
@@ -118,5 +119,34 @@ describe('AC-02.5 WizardStore — plan selection', () => {
     store.reset();
     expect(store.selectedPlanId()).toBeNull();
     expect(store.selectedPlan()).toBeNull();
+  });
+});
+
+// ---- Quote number (US-03) ----
+
+describe('AC-03.5 WizardStore — quoteNumber', () => {
+  it('AC-03.5 initial state has null quoteNumber', () => {
+    const store = createStore();
+    expect(store.quoteNumber()).toBeNull();
+  });
+
+  it('AC-03.5 store exposes quoteNumber after setQuoteNumber', () => {
+    const store = createStore();
+    store.setQuoteNumber('QT-CO-20261123-ABC123');
+    expect(store.quoteNumber()).toBe('QT-CO-20261123-ABC123');
+  });
+
+  it('AC-03.5 reset returns quoteNumber to null', () => {
+    const store = createStore();
+    store.setQuoteNumber('QT-CO-20261123-ABC123');
+    store.reset();
+    expect(store.quoteNumber()).toBeNull();
+  });
+
+  it('AC-03.5 setQuoteNumber replaces previous value', () => {
+    const store = createStore();
+    store.setQuoteNumber('QT-CO-20261123-FIRST1');
+    store.setQuoteNumber('QT-CO-20261124-SECOND');
+    expect(store.quoteNumber()).toBe('QT-CO-20261124-SECOND');
   });
 });

@@ -18,6 +18,8 @@ export interface WizardState {
   selectedPlan: Plan | null;
   /** Quote draft from step 3. */
   quote: null;
+  /** Simulated quote number after successful payment (ADR-010 D3-A, AC-03.5, AC-03.17). */
+  quoteNumber: string | null;
 }
 
 export const WizardStore = signalStore(
@@ -27,6 +29,7 @@ export const WizardStore = signalStore(
     selectedPlanId: null,
     selectedPlan: null,
     quote: null,
+    quoteNumber: null,
   }),
   withMethods((store) => ({
     setApplicant(values: Record<string, unknown>, fieldKeys: string[]): void {
@@ -55,6 +58,10 @@ export const WizardStore = signalStore(
         selectedPlan: null,
       });
     },
+    /** Persists the simulated quote number after a successful payment (ADR-010 D3-A, AC-03.5). */
+    setQuoteNumber(quoteNumber: string): void {
+      patchState(store, { quoteNumber });
+    },
     reset(): void {
       patchState(store, {
         applicant: null,
@@ -62,6 +69,7 @@ export const WizardStore = signalStore(
         selectedPlanId: null,
         selectedPlan: null,
         quote: null,
+        quoteNumber: null,
       });
     },
   })),
