@@ -17,7 +17,8 @@ apps/cms/public/uploads/*
 .env.*
 !.env.example
 
-# Claude Code: settings locales no se versionan; agents y skills sí
+# Claude Code: settings locales y worktrees temporales no se versionan; agents y skills sí
 .claude/settings.local.json
+.claude/worktrees/
 
 .DS_Store
