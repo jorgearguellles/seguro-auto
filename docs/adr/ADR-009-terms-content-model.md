@@ -447,3 +447,7 @@ Este ADR **no introduce dependencias nuevas**. `zod` ya está en CLAUDE.md §2. 
 - **Más países (MX, PE):** extender el enum `countryCodeSchema` y agregar documentos en Strapi. Zero cambios en el renderer.
 - **Equipo de 5 personas:** la lista v1 de bloques soportados queda documentada en la skill `strapi-content-model`; ampliarla exige nuevo ADR.
 - **Negocio pide HTML embebido ("quiero un badge"):** se rechaza; la vía correcta es extender el enum de bloques, no abrir una puerta de HTML.
+
+## Changelog
+
+- 2026-11-23: Endpoint URL changed to `/api/legal-terms` per ADR-012. The plural name "terms" conflicts with Strapi 5 internals. Las referencias a `/api/terms` en §Esquema concreto, §Consecuencias y §Validación quedan superseded por ADR-012 (solo el fragmento del endpoint URL / `pluralName`); el resto del ADR (modelo de contenido, zod, renderer, bootstrap de permisos) permanece vigente.

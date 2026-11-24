@@ -5,10 +5,12 @@ status: accepted
 date: 2026-11-23
 deciders: Jorge Argüelles
 supersedes:
-related: [SPEC-03, RN-03.3, AC-03.3, AC-03.10, AC-03.11, AC-03.12, G-03.7, ADR-003, ADR-009]
+related: [SPEC-03, RN-03.3, AC-03.3, AC-03.10, AC-03.11, AC-03.12, G-03.7, ADR-003, ADR-009, ADR-012]
 ---
 
 # ADR-011 — PUBLIC_READ_V3: permisos del rol Public amplían `api::terms.terms.find` para SPEC-03
+
+> **Nota (post-hoc, 2026-11-23):** ver ADR-012. El endpoint REST público del content-type `terms` es `/api/legal-terms` (no `/api/terms`) por conflicto de `pluralName: "terms"` con convenciones internas de Strapi 5. **El UID del permiso no cambia** — sigue siendo `api::terms.terms.find` (basado en `singularName: "terms"`). Lo que cambia son las URLs de los ejemplos `curl` en §Validación y la §Query canónica del front. Todo lo demás (D1-A, D2-A, D3-A, mínimo privilegio, modo aditivo del bootstrap) permanece intacto.
 
 ## Contexto y problema
 
@@ -109,10 +111,10 @@ Opción elegida: **D3-A — Mantener modo aditivo** (igual que ADR-003).
 - Cambiar a modo estricto es una decisión de v2 (ADR-003 §Camino de evolución, "equipo de 5 personas"). No es necesario para cerrar SPEC-03.
 - El riesgo de drift del admin (operador añade permisos a mano) sigue aceptado para v1.
 
-### Query canónica del front (recordatoria, define ADR-009)
+### Query canónica del front (recordatoria, define ADR-009; URL amended by ADR-012)
 
 ```
-GET /api/terms
+GET /api/legal-terms
   ?filters[country][code][$eq]=CO
   &sort=effectiveDate:desc,updatedAt:desc
   &pagination[limit]=1
@@ -120,7 +122,7 @@ GET /api/terms
 ```
 
 - `populate[country]=true` — nunca `populate=*` (ADR-003 §D4 + lint).
-- El endpoint se pluraliza como `/api/terms` porque el seed fija `pluralName: 'terms'` (ADR-009).
+- El endpoint se pluraliza como `/api/legal-terms` porque `apps/cms/src/api/terms/content-types/terms/schema.json` fija `pluralName: 'legal-terms'` (ADR-012, enmienda de ADR-009). El UID interno del content-type sigue siendo `api::terms.terms`, por lo que el permiso D1-A permanece literal.
 - Sin `Authorization` ni `Api-Token` (ADR-003 §D3).
 
 ### Consecuencias
@@ -136,14 +138,16 @@ GET /api/terms
 
 ### Validación
 
+> **Nota:** las URLs de los `curl` siguientes están actualizadas por ADR-012 (`/api/terms` → `/api/legal-terms`). El UID del permiso (`api::terms.terms.find`) no cambia.
+
 - **Test unitario** (CMS smoke, `AC-03.3 bootstrap grants terms.find to Public`): tras `bootstrap()`, el rol Public tiene exactamente los permisos de `PUBLIC_READ_V3` — se verifica contra la lista literal del código (test parametrizado por entrada de la lista).
-- **Test de integración HTTP** (`AC-03.3 GET /api/terms returns 200 without token`): `curl /api/terms?filters[country][code][$eq]=CO&populate[country]=true` sin headers de autenticación → `200` con al menos un documento del seed.
-- **Test de integración HTTP** (`AC-03.3 GET /api/terms/<id> returns 403`): `curl /api/terms/<documentId>` sin token → `403`. El rol Public solo tiene `find`, no `findOne`.
+- **Test de integración HTTP** (`AC-03.3 GET /api/legal-terms returns 200 without token`): `curl /api/legal-terms?filters[country][code][$eq]=CO&populate[country]=true` sin headers de autenticación → `200` con al menos un documento del seed.
+- **Test de integración HTTP** (`AC-03.3 GET /api/legal-terms/<id> returns 403`): `curl /api/legal-terms/<documentId>` sin token → `403`. El rol Public solo tiene `find`, no `findOne`.
 - **Test Playwright** (`AC-03.3 front loads terms per country`): recorrer paso 3 en `/co` y en `/cl` → DOM del renderer contiene texto distinto para cada país.
-- **Test Playwright** (`security.no-auth-header.spec.ts` existente): afirma ausencia de `Authorization` / `Api-Token` en todos los requests a `/api/**` incluyendo `/api/terms`. Se añade al recorrido del paso 3.
-- **Test Playwright** (`security.no-populate-star.spec.ts` existente): intercepta `/api/terms*` y falla si el query contiene `populate=*`.
-- **Test Playwright** (`AC-03.11 terms endpoint failure shows error state`): mockear ruta `/api/terms*` para devolver `503` → ver `terms.loadError` + botón reintentar; `pagar` deshabilitado.
-- **Test Playwright** (`AC-03.12 empty terms shows empty state`): mockear ruta `/api/terms*` para devolver `{ data: [] }` → ver `terms.empty`; `pagar` deshabilitado; no se renderiza checkbox de aceptación.
+- **Test Playwright** (`security.no-auth-header.spec.ts` existente): afirma ausencia de `Authorization` / `Api-Token` en todos los requests a `/api/**` incluyendo `/api/legal-terms`. Se añade al recorrido del paso 3.
+- **Test Playwright** (`security.no-populate-star.spec.ts` existente): intercepta `/api/legal-terms*` y falla si el query contiene `populate=*`.
+- **Test Playwright** (`AC-03.11 terms endpoint failure shows error state`): mockear ruta `/api/legal-terms*` para devolver `503` → ver `terms.loadError` + botón reintentar; `pagar` deshabilitado.
+- **Test Playwright** (`AC-03.12 empty terms shows empty state`): mockear ruta `/api/legal-terms*` para devolver `{ data: [] }` → ver `terms.empty`; `pagar` deshabilitado; no se renderiza checkbox de aceptación.
 - **Grep en CI** (`review-checklist`): `grep -R -nE 'PUBLIC_READ_V' apps/cms/src` devuelve exactamente una definición (`PUBLIC_READ_V3`) y ningún alias.
 - **Revisión manual en HITL-2**: lista `PUBLIC_READ_V3` del código ↔ lista de permisos del rol Public en el admin tras `docker compose up` desde limpio.
 
@@ -193,3 +197,7 @@ Este ADR **no introduce dependencias nuevas**. Solo modifica una constante exist
 - **`findOne` para terms** cuando aparezca un caso de uso justificado (p. ej. deep-link a "ver términos vigentes al momento de la cotización"). Nuevo ADR delta.
 - **Más países:** la lista de permisos no cambia; Strapi filtra por `country.code` sobre los documentos ya accesibles.
 - **Equipo de 5 personas:** check de PR — "¿tu PR añade permisos al rol Public? → debes crear un ADR delta".
+
+## Changelog
+
+- 2026-11-23: ADR-012 enmienda las URLs de ejemplo (`/api/terms` → `/api/legal-terms`) en §Query canónica del front y §Validación. El UID del permiso (`api::terms.terms.find`) permanece intacto; el resto del ADR (D1-A, D2-A, D3-A) no cambia.
