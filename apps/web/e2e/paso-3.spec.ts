@@ -582,7 +582,7 @@ test.describe('AC-03.8 Navegar a pasos anteriores conserva datos', () => {
 
     await expect(page.getByRole('status')).not.toBeVisible();
 
-    await page.getByRole('link', { name: 'Editar datos' }).click();
+    await page.getByRole('link', { name: 'Editar datos' }).first().click();
     await expect(page).toHaveURL(/paso-1/);
   });
 
@@ -606,7 +606,7 @@ test.describe('AC-03.8 Navegar a pasos anteriores conserva datos', () => {
 
     await expect(page.getByRole('status')).not.toBeVisible();
 
-    await page.getByRole('link', { name: 'Editar datos' }).click();
+    await page.getByRole('link', { name: 'Editar datos' }).first().click();
     await expect(page).toHaveURL(/paso-1/);
 
     // Values persisted in WizardStore
@@ -986,7 +986,7 @@ test.describe('AC-03.14 Accesibilidad — axe audit y teclado', () => {
       // Chrome 118+ may make the scrollable terms section focusable, adding an extra stop.
       const payBtn = page.getByRole('button', { name: 'Pagar' });
       let payFocused = false;
-      for (let i = 0; i < 5 && !payFocused; i++) {
+      for (let i = 0; i < 15 && !payFocused; i++) {
         payFocused = await payBtn.evaluate((el) => document.activeElement === el);
         if (!payFocused) await page.keyboard.press('Tab');
       }

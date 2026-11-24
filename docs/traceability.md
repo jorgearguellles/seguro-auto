@@ -33,7 +33,7 @@
 | AC-02.1 | Planes del país activo, publicados y activos | ADR-007, ADR-008 | c979c44, d3c8b3a, 5b466c2, 3086a6b | `plan.schema.spec.ts` | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
 | AC-02.2 | Formato de precio por país | ADR-007 | — | `pricing.spec.ts` | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
 | AC-02.3 | Ajuste de precio por antigüedad del vehículo | ADR-007 | — | `pricing.spec.ts` | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
-| AC-02.4 | Plan recomendado distinguido visualmente | ADR-007 | 7983b2a | — | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
+| AC-02.4 | Plan recomendado distinguido visualmente | ADR-007 | 1bc6706, 7983b2a | — | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
 | AC-02.5 | Selección única de plan | — | — | `wizard.store.spec.ts` | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
 | AC-02.6 | Avanzar al paso 3 requiere selección | — | — | — | `paso-2.spec.ts` | REV-02-1, REV-02-2 |
 | AC-02.7 | Persistencia de la selección entre pasos | ADR-007 | 395e9fa, 66072ec, 1dabb27 | `wizard.store.spec.ts` | `paso-2.spec.ts` | REV-02-1, REV-02-2 |

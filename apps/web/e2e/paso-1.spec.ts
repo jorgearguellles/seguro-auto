@@ -456,7 +456,8 @@ test.describe('AC-01.13 Keyboard navigation and axe audit', () => {
     await runAxe(page);
 
     // Tab through all fields by keyboard only
-    // Start from body, Tab to first field
+    // runAxe injects a script tag which may steal focus — reset to form heading first
+    await page.locator('#form-title').evaluate((el) => (el as HTMLElement).focus());
     await page.keyboard.press('Tab');
     await expect(page.getByLabel('Nombre completo')).toBeFocused();
 
