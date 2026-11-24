@@ -69,7 +69,7 @@ export class StrapiClient {
     });
 
     return this.#http
-      .get<unknown>(`/api/terms?${params.toString()}`)
+      .get<unknown>(`/api/legal-terms?${params.toString()}`)
       .pipe(map((raw) => parseTerms(raw)));
   }
 }

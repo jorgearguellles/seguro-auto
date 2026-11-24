@@ -3,7 +3,7 @@
   "collectionName": "terms_documents",
   "info": {
     "singularName": "terms",
-    "pluralName": "terms",
+    "pluralName": "legal-terms",
     "displayName": "Terms",
     "description": "Terms and conditions per country with blocks rich text body and effective date (ADR-009, ADR-011, AC-03.3, AC-03.10, AC-03.11, AC-03.12)"
   },
