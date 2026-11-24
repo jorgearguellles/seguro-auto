@@ -16,12 +16,15 @@
       "type": "string",
       "required": true
     },
+    "version": {
+      "type": "string"
+    },
     "body": {
-      "type": "blocks"
+      "type": "blocks",
+      "required": true
     },
     "effectiveDate": {
-      "type": "date",
-      "required": true
+      "type": "date"
     },
     "country": {
       "type": "relation",
