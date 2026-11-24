@@ -384,10 +384,11 @@ test.describe('AC-02.4 Recommended plan badge', () => {
     await mockFieldsAndPlans(page, CO_PLANS_RESPONSE);
     await completePaso1(page);
 
-    // The badge element has aria-label="Recomendado" (or the text itself is readable)
-    // The component uses <span class="badge" aria-label="{{ msgs['plans.recommended'] }}">
-    const badge = page.locator('[aria-label="Recomendado"]').first();
-    await expect(badge).toBeVisible();
+    // After F-02-1.3: badge uses visible text only (no aria-label); accessible via
+    // aria-labelledby on the radio which includes the badge id.
+    const standardCard = page.getByRole('radio', { name: /Estándar.*Recomendado/ });
+    await expect(standardCard).toBeVisible();
+    await expect(standardCard.getByText('Recomendado')).toBeVisible();
   });
 });
 
