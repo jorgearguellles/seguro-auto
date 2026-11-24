@@ -255,8 +255,7 @@ export class ApplicantFormComponent implements OnInit, OnDestroy {
     // Save to store on unmount if form is valid (AC-01.5)
     if (this.loadState() === 'ready' && this.form().valid) {
       const values = this.form().getRawValue() as Record<string, unknown>;
-      const keys = this.fields().map((f) => f.key);
-      this.#wizardStore.setApplicant(values, keys);
+      this.#wizardStore.setApplicant(values, this.fields());
     }
   }
 
@@ -312,8 +311,7 @@ export class ApplicantFormComponent implements OnInit, OnDestroy {
     this.isSubmitting.set(true);
 
     const values = f.getRawValue() as Record<string, unknown>;
-    const keys = this.fields().map((field) => field.key);
-    this.#wizardStore.setApplicant(values, keys);
+    this.#wizardStore.setApplicant(values, this.fields());
 
     const country = this.#countryContext.country().toLowerCase();
     this.#router.navigate([`/${country}/paso-2`]).finally(() => {
@@ -351,7 +349,9 @@ export class ApplicantFormComponent implements OnInit, OnDestroy {
     const currentKeys = new Set(fields.map((f) => f.key));
     const form = this.form();
 
-    for (const key of snapshot) {
+    // snapshot is now FormField[] — use .key to iterate (F-03-1.3)
+    for (const snapshotField of snapshot) {
+      const key = snapshotField.key;
       if (currentKeys.has(key) && stored[key] !== undefined) {
         const ctrl = form.get(key);
         if (ctrl) {

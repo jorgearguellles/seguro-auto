@@ -3,7 +3,13 @@
  * All data is fictional (RUTs, cédulas, plates follow real format rules).
  */
 
-/** Minimal valid CO fields for most tests. */
+/**
+ * Minimal valid CO fields for most tests.
+ * Keys match the real seed in apps/cms/src/seed.ts (F-03-1.1):
+ *   documentNumber_CO — CO document number (prefix-matched by isDocumentKey)
+ *   plate_CO          — vehicle plate (section: vehicle)
+ *   vehicleYear       — vehicle year  (section: vehicle, ADR-007)
+ */
 export const CO_FIELDS_RESPONSE = {
   data: [
     {
@@ -11,6 +17,7 @@ export const CO_FIELDS_RESPONSE = {
       key: 'fullName',
       label: 'Nombre completo',
       type: 'text',
+      section: 'applicant',
       required: true,
       helpText: 'Tal como aparece en su cédula',
       errorMessage: 'El nombre es obligatorio',
@@ -21,9 +28,10 @@ export const CO_FIELDS_RESPONSE = {
     },
     {
       documentId: 'co-doc-cedula',
-      key: 'documentNumber',
+      key: 'documentNumber_CO',
       label: 'Número de cédula',
       type: 'text',
+      section: 'applicant',
       required: true,
       helpText: null,
       errorMessage: 'Cédula inválida (6–10 dígitos)',
@@ -34,9 +42,10 @@ export const CO_FIELDS_RESPONSE = {
     },
     {
       documentId: 'co-doc-plate',
-      key: 'plate',
+      key: 'plate_CO',
       label: 'Placa del vehículo',
       type: 'text',
+      section: 'vehicle',
       required: true,
       helpText: null,
       errorMessage: 'Placa inválida (ej. ABC123)',
@@ -50,6 +59,7 @@ export const CO_FIELDS_RESPONSE = {
       key: 'vehicleYear',
       label: 'Año del vehículo',
       type: 'number',
+      section: 'vehicle',
       required: true,
       helpText: null,
       errorMessage: 'Año fuera de rango permitido',
@@ -63,6 +73,7 @@ export const CO_FIELDS_RESPONSE = {
       key: 'brand',
       label: 'Marca del vehículo',
       type: 'select',
+      section: 'vehicle',
       required: true,
       helpText: null,
       errorMessage: 'Seleccione una marca',
@@ -79,7 +90,12 @@ export const CO_FIELDS_RESPONSE = {
   ],
 };
 
-/** Minimal valid CL fields for country-switch tests. */
+/**
+ * Minimal valid CL fields for country-switch tests.
+ * Keys match the real seed in apps/cms/src/seed.ts (F-03-1.1):
+ *   rut_CL   — CL RUT (prefix-matched by isDocumentKey)
+ *   plate_CL — vehicle plate (section: vehicle)
+ */
 export const CL_FIELDS_RESPONSE = {
   data: [
     {
@@ -87,6 +103,7 @@ export const CL_FIELDS_RESPONSE = {
       key: 'fullName',
       label: 'Nombre completo',
       type: 'text',
+      section: 'applicant',
       required: true,
       helpText: null,
       errorMessage: 'El nombre es obligatorio',
@@ -97,9 +114,10 @@ export const CL_FIELDS_RESPONSE = {
     },
     {
       documentId: 'cl-doc-rut',
-      key: 'rut',
+      key: 'rut_CL',
       label: 'RUT',
       type: 'text',
+      section: 'applicant',
       required: true,
       helpText: 'Ej. 12345678-5',
       errorMessage: 'RUT inválido',
@@ -110,9 +128,10 @@ export const CL_FIELDS_RESPONSE = {
     },
     {
       documentId: 'cl-doc-plate',
-      key: 'plate',
+      key: 'plate_CL',
       label: 'Patente del vehículo',
       type: 'text',
+      section: 'vehicle',
       required: true,
       helpText: null,
       errorMessage: 'Patente inválida (ej. BB1234)',
@@ -133,6 +152,7 @@ export const CO_FIELDS_WITH_EXTRA = {
       key: 'city',
       label: 'Ciudad de residencia',
       type: 'text',
+      section: 'applicant',
       required: false,
       helpText: 'Ciudad donde reside actualmente',
       errorMessage: 'Campo inválido',

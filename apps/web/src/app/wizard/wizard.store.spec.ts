@@ -9,6 +9,25 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { WizardStore } from './wizard.store';
 import type { Plan } from '../core/schemas/plan.schema';
+import type { FormField } from '../core/schemas/form-field.schema';
+
+/** Minimal FormField stub for use in store tests (F-03-1.3). */
+function makeField(key: string, section: 'applicant' | 'vehicle' = 'applicant'): FormField {
+  return {
+    documentId: `doc-${key}`,
+    key,
+    label: key,
+    type: 'text',
+    section,
+    required: false,
+    helpText: null,
+    errorMessage: 'Required',
+    order: 1,
+    defaultValue: null,
+    autocomplete: null,
+    validations: [],
+  } as FormField;
+}
 
 function createStore(): InstanceType<typeof WizardStore> {
   TestBed.configureTestingModule({ providers: [WizardStore] });
@@ -27,16 +46,17 @@ describe('AC-01.5 WizardStore', () => {
     expect(store.applicantFieldsSnapshot()).toBeNull();
   });
 
-  it('AC-01.5 setApplicant stores values and snapshot', () => {
+  it('AC-01.5 setApplicant stores values and snapshot (now FormField[], F-03-1.3)', () => {
     const store = createStore();
-    store.setApplicant({ documentNumber: '12345678' }, ['documentNumber']);
-    expect(store.applicant()).toEqual({ documentNumber: '12345678' });
-    expect(store.applicantFieldsSnapshot()).toEqual(['documentNumber']);
+    const fields = [makeField('documentNumber_CO')];
+    store.setApplicant({ documentNumber_CO: '12345678' }, fields);
+    expect(store.applicant()).toEqual({ documentNumber_CO: '12345678' });
+    expect(store.applicantFieldsSnapshot()).toEqual(fields);
   });
 
   it('AC-01.5 clearApplicant resets applicant and snapshot to null', () => {
     const store = createStore();
-    store.setApplicant({ documentNumber: '12345678' }, ['documentNumber']);
+    store.setApplicant({ documentNumber_CO: '12345678' }, [makeField('documentNumber_CO')]);
     store.clearApplicant();
     expect(store.applicant()).toBeNull();
     expect(store.applicantFieldsSnapshot()).toBeNull();
@@ -44,7 +64,7 @@ describe('AC-01.5 WizardStore', () => {
 
   it('AC-01.5 reset clears all state', () => {
     const store = createStore();
-    store.setApplicant({ documentNumber: '12345678' }, ['documentNumber']);
+    store.setApplicant({ documentNumber_CO: '12345678' }, [makeField('documentNumber_CO')]);
     store.reset();
     expect(store.applicant()).toBeNull();
     expect(store.applicantFieldsSnapshot()).toBeNull();
@@ -55,13 +75,13 @@ describe('AC-01.5 WizardStore', () => {
 
   it('RN-01.13 does not write to localStorage', () => {
     const store = createStore();
-    store.setApplicant({ rut: '12345678-9' }, ['rut']);
+    store.setApplicant({ rut_CL: '12345678-9' }, [makeField('rut_CL')]);
     expect(localStorage.length).toBe(0);
   });
 
   it('RN-01.13 does not write to sessionStorage', () => {
     const store = createStore();
-    store.setApplicant({ rut: '12345678-9' }, ['rut']);
+    store.setApplicant({ rut_CL: '12345678-9' }, [makeField('rut_CL')]);
     expect(sessionStorage.length).toBe(0);
   });
 });

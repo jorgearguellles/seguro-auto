@@ -26,6 +26,7 @@ export const SYSTEM_MESSAGES = {
   // Step 3 — summary and simulated payment (SPEC-03, ADR-010 G-03.9)
   'summary.title': 'Resumen y pago',
   'summary.yourData': 'Tus datos',
+  'summary.yourVehicle': 'Datos del vehículo',
   'summary.yourPlan': 'Plan elegido',
   'summary.price': 'Precio final',
   'summary.terms': 'Términos y condiciones',

@@ -111,6 +111,8 @@ const fieldBaseSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
   required: z.boolean(),
+  /** Section the field belongs to — used by SummaryComponent to split blocks (F-03-1.3, RN-03.1). */
+  section: z.enum(['applicant', 'vehicle']).optional().nullable(),
   helpText: z.string().optional().nullable(),
   errorMessage: z.string().min(1),
   order: z.number().int(),
