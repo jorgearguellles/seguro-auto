@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_plan_coverages",
+  "info": {
+    "displayName": "Coverage",
+    "description": "A coverage item for an insurance plan (ADR-007 D1-A)",
+    "icon": "shield"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

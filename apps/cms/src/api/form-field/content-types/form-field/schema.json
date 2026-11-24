@@ -14,8 +14,7 @@
   "attributes": {
     "key": {
       "type": "string",
-      "required": true,
-      "unique": true
+      "required": true
     },
     "label": {
       "type": "string",

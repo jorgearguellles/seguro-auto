@@ -1,0 +1,22 @@
+{
+  "collectionName": "components_plan_benefits",
+  "info": {
+    "displayName": "Benefit",
+    "description": "A benefit item for an insurance plan (ADR-007 D1-A)",
+    "icon": "star"
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "order": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

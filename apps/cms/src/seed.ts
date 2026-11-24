@@ -4,13 +4,23 @@
  * [AC-01.5] Only published entries consumed by the front.
  * [AC-01.8] Select options populated from Strapi.
  * [AC-01.15] Draft fields are not exposed by REST.
+ * [AC-02.1] Plans per country published and active.
+ * [AC-02.2] basePrice as integer (COP/CLP use no decimals).
+ * [AC-02.4] recommended boolean per plan.
+ * [ADR-007] vehicleYear key contract — pricing.ts reads applicant.vehicleYear.
  *
  * Key natural:
- *   country  → code
- *   form-field → key (unique by DB constraint — slug is globally unique in schema)
+ *   country    → code
+ *   form-field → key (unique by DB constraint)
+ *   plan       → name + country.code (composite natural key for idempotency)
  *
  * Pattern: findFirst({ filters }) → if not found, create({ data, status: 'published' })
  * Never overwrites entries already modified by the business team in the admin.
+ *
+ * NOTE (ADR-007 §VEHICLE_YEAR_FIELD_KEY): the vehicleYear form-field key must be
+ * exactly 'vehicleYear' for both CO and CL. The unique constraint on form-field.key
+ * prevents two entries with the same key; this requires either a unique-per-country
+ * scoping or relaxing the global unique. See handoff pending question P-02.1.
  */
 
 import type { Core } from '@strapi/strapi';
@@ -176,7 +186,9 @@ const FIELDS_CO: FormFieldSeed[] = [
     ],
   },
   {
-    key: 'vehicleYear_CO',
+    // ADR-007 §VEHICLE_YEAR_FIELD_KEY: key must be exactly 'vehicleYear'
+    // so pricing.ts can read applicant.vehicleYear from WizardStore (G-02.5, RN-02.4).
+    key: 'vehicleYear',
     label: 'Año del vehículo',
     type: 'number',
     section: 'vehicle',
@@ -291,7 +303,9 @@ const FIELDS_CL: FormFieldSeed[] = [
     ],
   },
   {
-    key: 'vehicleYear_CL',
+    // ADR-007 §VEHICLE_YEAR_FIELD_KEY: key must be exactly 'vehicleYear'
+    // so pricing.ts can read applicant.vehicleYear from WizardStore (G-02.5, RN-02.4).
+    key: 'vehicleYear',
     label: 'Año del vehículo',
     type: 'number',
     section: 'vehicle',
@@ -323,6 +337,146 @@ const FIELDS_CL: FormFieldSeed[] = [
       { value: 'nissan', label: 'Nissan', order: 6 },
       { value: 'mazda', label: 'Mazda', order: 7 },
     ],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Plan data — Colombia (CO)
+// ---------------------------------------------------------------------------
+
+interface PlanCoverage {
+  label: string;
+  description?: string;
+  order: number;
+}
+
+interface PlanBenefit {
+  label: string;
+  description?: string;
+  order: number;
+}
+
+interface PlanSeed {
+  name: string;
+  shortDescription: string;
+  basePrice: number;
+  currency: 'COP' | 'CLP';
+  coverages: PlanCoverage[];
+  benefits: PlanBenefit[];
+  order: number;
+  recommended: boolean;
+  active: boolean;
+}
+
+const PLANS_CO: PlanSeed[] = [
+  {
+    name: 'Básico',
+    shortDescription: 'Protección esencial para tu vehículo en Colombia.',
+    basePrice: 800000,
+    currency: 'COP',
+    coverages: [
+      { label: 'Responsabilidad Civil Extracontractual', description: 'Cubre daños a terceros por accidente de tránsito.', order: 1 },
+      { label: 'Daños parciales por colisión', description: 'Repara daños menores causados por choque.', order: 2 },
+    ],
+    benefits: [
+      { label: 'Asistencia vial 24/7', description: 'Grúa y auxilio mecánico en cualquier punto del país.', order: 1 },
+      { label: 'Reposición de llanta', description: 'Cambio de llanta en carretera sin costo adicional.', order: 2 },
+    ],
+    order: 1,
+    recommended: false,
+    active: true,
+  },
+  {
+    name: 'Estándar',
+    shortDescription: 'Cobertura amplia para conductores frecuentes en Colombia.',
+    basePrice: 1200000,
+    currency: 'COP',
+    coverages: [
+      { label: 'Responsabilidad Civil Extracontractual', description: 'Cubre daños a terceros por accidente de tránsito.', order: 1 },
+      { label: 'Daños totales y parciales por colisión', description: 'Repara o repone el vehículo según el nivel del daño.', order: 2 },
+    ],
+    benefits: [
+      { label: 'Asistencia vial 24/7', description: 'Grúa y auxilio mecánico en cualquier punto del país.', order: 1 },
+      { label: 'Vehículo de reemplazo', description: 'Automóvil sustituto por hasta 10 días hábiles.', order: 2 },
+    ],
+    order: 2,
+    recommended: true,
+    active: true,
+  },
+  {
+    name: 'Premium',
+    shortDescription: 'Protección total con beneficios exclusivos en Colombia.',
+    basePrice: 1800000,
+    currency: 'COP',
+    coverages: [
+      { label: 'Cobertura todo riesgo', description: 'Protege contra robo, daños parciales, totales y fenómenos naturales.', order: 1 },
+      { label: 'Responsabilidad Civil ampliada', description: 'Mayor límite de indemnización a terceros.', order: 2 },
+    ],
+    benefits: [
+      { label: 'Asistencia vial premium 24/7', description: 'Grúa, auxilio mecánico y cerrajería sin límite.', order: 1 },
+      { label: 'Vehículo de reemplazo extendido', description: 'Automóvil sustituto por hasta 20 días hábiles.', order: 2 },
+    ],
+    order: 3,
+    recommended: false,
+    active: true,
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Plan data — Chile (CL)
+// ---------------------------------------------------------------------------
+
+const PLANS_CL: PlanSeed[] = [
+  {
+    name: 'Básico',
+    shortDescription: 'Protección esencial para tu vehículo en Chile.',
+    basePrice: 180000,
+    currency: 'CLP',
+    coverages: [
+      { label: 'Responsabilidad Civil', description: 'Cubre daños a terceros según la Ley de Tránsito chilena.', order: 1 },
+      { label: 'Daños parciales por colisión', description: 'Repara daños menores causados por choque.', order: 2 },
+    ],
+    benefits: [
+      { label: 'Asistencia en ruta 24/7', description: 'Grúa y auxilio mecánico en todo Chile continental.', order: 1 },
+      { label: 'Reposición de neumático', description: 'Cambio de neumático en carretera sin costo adicional.', order: 2 },
+    ],
+    order: 1,
+    recommended: false,
+    active: true,
+  },
+  {
+    name: 'Estándar',
+    shortDescription: 'Cobertura amplia para conductores frecuentes en Chile.',
+    basePrice: 280000,
+    currency: 'CLP',
+    coverages: [
+      { label: 'Responsabilidad Civil ampliada', description: 'Mayor límite de indemnización a terceros según normativa.', order: 1 },
+      { label: 'Daños totales y parciales por colisión', description: 'Repara o repone el vehículo según nivel del daño.', order: 2 },
+    ],
+    benefits: [
+      { label: 'Asistencia en ruta 24/7', description: 'Grúa y auxilio mecánico en todo Chile continental.', order: 1 },
+      { label: 'Auto de reemplazo', description: 'Vehículo sustituto por hasta 10 días hábiles.', order: 2 },
+    ],
+    order: 2,
+    recommended: true,
+    active: true,
+  },
+  {
+    name: 'Premium',
+    shortDescription: 'Protección total con beneficios exclusivos en Chile.',
+    basePrice: 420000,
+    currency: 'CLP',
+    coverages: [
+      { label: 'Cobertura todo riesgo', description: 'Protege contra robo, daños parciales, totales y eventos naturales.', order: 1 },
+      { label: 'Responsabilidad Civil premium', description: 'El mayor límite de indemnización disponible en el plan.', order: 2 },
+    ],
+    benefits: [
+      { label: 'Asistencia premium en ruta 24/7', description: 'Grúa, auxilio mecánico y cerrajería sin límite de llamadas.', order: 1 },
+      { label: 'Auto de reemplazo extendido', description: 'Vehículo sustituto por hasta 20 días hábiles.', order: 2 },
+    ],
+    order: 3,
+    recommended: false,
+    active: true,
   },
 ];
 
@@ -365,8 +519,9 @@ async function seedFormFields(
   countryCode: string
 ): Promise<void> {
   for (const field of fields) {
+    // Idempotency check by key + country (ADR-007: vehicleYear is shared across countries).
     const existing = await strapi.documents('api::form-field.form-field').findFirst({
-      filters: { key: { $eq: field.key } },
+      filters: { key: { $eq: field.key }, country: { $eq: countryDocId } },
       status: 'published',
     });
 
@@ -377,7 +532,7 @@ async function seedFormFields(
 
     // Also check drafts to avoid creating a published duplicate over a draft
     const existingDraft = await strapi.documents('api::form-field.form-field').findFirst({
-      filters: { key: { $eq: field.key } },
+      filters: { key: { $eq: field.key }, country: { $eq: countryDocId } },
       status: 'draft',
     });
 
@@ -422,6 +577,62 @@ async function seedFormFields(
   }
 }
 
+async function seedPlans(
+  strapi: Core.Strapi,
+  plans: PlanSeed[],
+  countryDocId: string,
+  countryCode: string
+): Promise<void> {
+  for (const plan of plans) {
+    // Idempotency: find by name + country (ADR-007 — composite natural key).
+    const existing = await strapi.documents('api::plan.plan').findFirst({
+      filters: {
+        name: { $eq: plan.name },
+        country: { $eq: countryDocId },
+      },
+      status: 'published',
+    });
+
+    if (existing) {
+      strapi.log.info(`[seed] plan "${plan.name}" (${countryCode}) already published, skipping.`);
+      continue;
+    }
+
+    // Also check drafts.
+    const existingDraft = await strapi.documents('api::plan.plan').findFirst({
+      filters: {
+        name: { $eq: plan.name },
+        country: { $eq: countryDocId },
+      },
+      status: 'draft',
+    });
+
+    if (existingDraft) {
+      strapi.log.info(`[seed] plan "${plan.name}" (${countryCode}) exists as draft, skipping.`);
+      continue;
+    }
+
+    const created = await strapi.documents('api::plan.plan').create({
+      data: {
+        name: plan.name,
+        shortDescription: plan.shortDescription,
+        basePrice: plan.basePrice,
+        currency: plan.currency,
+        coverages: plan.coverages,
+        benefits: plan.benefits,
+        order: plan.order,
+        recommended: plan.recommended,
+        active: plan.active,
+        country: countryDocId,
+      },
+    });
+
+    await strapi.documents('api::plan.plan').publish({ documentId: created.documentId });
+
+    strapi.log.info(`[seed] plan "${plan.name}" (${countryCode}) created and published (documentId: ${created.documentId}).`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -435,15 +646,17 @@ export async function seed(strapi: Core.Strapi): Promise<void> {
   const clDocId = countryDocIds.get('CL');
 
   if (!coDocId) {
-    strapi.log.error('[seed] Could not find or create CO country. Skipping CO form fields.');
+    strapi.log.error('[seed] Could not find or create CO country. Skipping CO form fields and plans.');
   } else {
     await seedFormFields(strapi, FIELDS_CO, coDocId, 'CO');
+    await seedPlans(strapi, PLANS_CO, coDocId, 'CO');
   }
 
   if (!clDocId) {
-    strapi.log.error('[seed] Could not find or create CL country. Skipping CL form fields.');
+    strapi.log.error('[seed] Could not find or create CL country. Skipping CL form fields and plans.');
   } else {
     await seedFormFields(strapi, FIELDS_CL, clDocId, 'CL');
+    await seedPlans(strapi, PLANS_CL, clDocId, 'CL');
   }
 
   strapi.log.info('[seed] Seed complete.');
