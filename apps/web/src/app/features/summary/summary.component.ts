@@ -7,6 +7,9 @@
  * Keyboard-accessible; aria-busy/aria-disabled on pay button (AC-03.14).
  * Responsive 375px + 1280px (AC-03.15).
  * Document number masked in DOM — only last 4 non-separator chars visible (AC-03.2, AC-03.16, RN-03.11).
+ * Three blocks: titular data, vehicle data, plan (RN-03.1, F-03-1.3).
+ * After payment success navigates to /:country/confirmacion (ADR-010 D4-A, F-03-1.4).
+ *
  * AC-03.1, AC-03.2, AC-03.3, AC-03.4, AC-03.5, AC-03.6, AC-03.7, AC-03.8,
  * AC-03.9, AC-03.10, AC-03.11, AC-03.12, AC-03.13, AC-03.14, AC-03.15, AC-03.16, AC-03.17
  */
@@ -28,49 +31,14 @@ import { calculateFinalPrice, formatPrice } from '../../core/pricing';
 import { CountryContext } from '../../country/country.context';
 import { WizardStore } from '../../wizard/wizard.store';
 import { PaymentService } from './payment.service';
-import { TermsBlocksRendererComponent } from './terms-blocks-renderer.component';
+import { TermsBlocksRendererComponent } from '../../shared/terms-blocks-renderer/terms-blocks-renderer.component';
+import { maskDocument, isDocumentKey } from '../../core/document-mask';
 import type { TermsDocument } from '../../core/schemas/terms.schema';
 
-type PageState = 'loading' | 'error' | 'ready' | 'confirmed';
+type PageState = 'loading' | 'error' | 'ready';
 
-/** Separator characters that are preserved in position but not counted as visible chars. */
-const SEPARATORS = new Set(['-', '.', ' ']);
-
-/**
- * Masks a document number so only the last 4 non-separator characters are visible.
- * Separators preserve their position (G-03.1, AC-03.2, RN-03.11).
- *
- * Examples:
- *   '1023456789'  → '******6789'
- *   '12345678-5'  → '*****678-5'
- *   '9876543'     → '***6543'
- */
-export function maskDocument(doc: string): string {
-  if (!doc) return '';
-
-  // Collect non-separator character positions (right to left)
-  const positions: number[] = [];
-  for (let i = doc.length - 1; i >= 0; i--) {
-    if (!SEPARATORS.has(doc[i])) {
-      positions.push(i);
-    }
-  }
-
-  // The first 4 entries in `positions` are the rightmost non-separator chars (visible)
-  const visibleSet = new Set(positions.slice(0, 4));
-
-  let result = '';
-  for (let i = 0; i < doc.length; i++) {
-    if (SEPARATORS.has(doc[i])) {
-      result += doc[i]; // preserve separator
-    } else if (visibleSet.has(i)) {
-      result += doc[i]; // visible
-    } else {
-      result += '*'; // mask
-    }
-  }
-  return result;
-}
+/** Re-export maskDocument so existing spec file (mask-document.spec.ts) keeps importing from here. */
+export { maskDocument };
 
 @Component({
   selector: 'app-summary',
@@ -89,144 +57,146 @@ export function maskDocument(doc: string): string {
         {{ ariaAnnouncement() }}
       </div>
 
-      @switch (pageState()) {
-        @case ('confirmed') {
-          <!-- Confirmation screen (AC-03.5, AC-03.17) -->
-          <div
-            class="state-confirmed"
-            role="status"
-            aria-live="polite"
-            tabindex="-1"
-          >
-            <h2 class="confirmed-heading">{{ msgs['summary.confirmed'] }}</h2>
-            <p class="quote-number-label">{{ msgs['summary.quoteNumber'] }}</p>
-            <p class="quote-number-value">{{ wizardStore.quoteNumber() }}</p>
-          </div>
-        }
+      <!-- Summary blocks always visible (AC-03.1, AC-03.11 — rest of summary shows even on terms error) -->
 
-        @default {
-          <!-- Summary blocks always visible (AC-03.1, AC-03.11 — rest of summary shows even on terms error) -->
-
-          <!-- Block 1: Applicant data (AC-03.1, AC-03.2, AC-03.16) -->
-          <section class="summary-block" aria-labelledby="section-data">
-            <h2 id="section-data" class="block-heading">{{ msgs['summary.yourData'] }}</h2>
-            <dl class="data-list">
-              @for (entry of applicantEntries(); track entry.key) {
-                <div class="data-row">
-                  <dt class="data-label">{{ entry.key }}</dt>
-                  <dd class="data-value">{{ entry.value }}</dd>
-                </div>
-              }
-            </dl>
-            <a
-              class="summary-action-link"
-              [attr.href]="editDataUrl()"
-              (click)="goEditData($event)"
-            >{{ msgs['summary.editData'] }}</a>
-          </section>
-
-          <!-- Block 2: Plan summary (AC-03.1, AC-03.13) -->
-          @if (wizardStore.selectedPlan(); as plan) {
-            <section class="summary-block" aria-labelledby="section-plan">
-              <h2 id="section-plan" class="block-heading">{{ msgs['summary.yourPlan'] }}</h2>
-              <dl class="data-list">
-                <div class="data-row">
-                  <dt class="data-label">{{ msgs['summary.yourPlan'] }}</dt>
-                  <dd class="data-value">{{ plan.name }}</dd>
-                </div>
-                <div class="data-row">
-                  <dt class="data-label">{{ msgs['summary.price'] }}</dt>
-                  <dd class="data-value">{{ finalPriceFormatted() }}</dd>
-                </div>
-              </dl>
-              <a
-                class="summary-action-link"
-                [attr.href]="changePlanUrl()"
-                (click)="goChangePlan($event)"
-              >{{ msgs['summary.back'] }}</a>
-            </section>
+      <!-- Block 1: Applicant identity data (AC-03.1, AC-03.2, AC-03.16, RN-03.1, F-03-1.3) -->
+      <section class="summary-block" aria-labelledby="section-identity">
+        <h2 id="section-identity" class="block-heading">{{ msgs['summary.yourData'] }}</h2>
+        <dl class="data-list">
+          @for (entry of applicantIdentityEntries(); track entry.label) {
+            <div class="data-row">
+              <dt class="data-label">{{ entry.label }}</dt>
+              <dd class="data-value">{{ entry.value }}</dd>
+            </div>
           }
+        </dl>
+        <a
+          class="summary-action-link"
+          [attr.href]="editDataUrl()"
+          (click)="goEditData($event)"
+        >{{ msgs['summary.editData'] }}</a>
+      </section>
 
-          <!-- Block 3: Terms (AC-03.3, AC-03.10, AC-03.11, AC-03.12) -->
-          <section class="summary-block summary-block--terms" aria-labelledby="section-terms">
-            <h2 id="section-terms" class="block-heading">{{ msgs['summary.terms'] }}</h2>
-
-            @switch (pageState()) {
-              @case ('loading') {
-                <div class="state-loading" role="status">
-                  <div class="loading-spinner" aria-hidden="true"></div>
-                  <p>{{ msgs['summary.loading'] }}</p>
-                </div>
-              }
-
-              @case ('error') {
-                <div role="alert" class="state-error">
-                  <p>{{ msgs['summary.loadError'] }}</p>
-                  <button
-                    type="button"
-                    class="btn btn--secondary"
-                    (click)="loadTerms()"
-                  >
-                    {{ msgs['summary.loadRetry'] }}
-                  </button>
-                </div>
-              }
-
-              @case ('ready') {
-                @if (terms(); as termsDoc) {
-                  <div class="terms-content">
-                    <app-terms-blocks-renderer [blocks]="termsDoc.body" />
-                  </div>
-
-                  <!-- Checkbox: terms acceptance (AC-03.4, AC-03.14, G-03.10) -->
-                  <div class="terms-accept">
-                    <label class="checkbox-label">
-                      <input
-                        type="checkbox"
-                        class="checkbox-input"
-                        [checked]="termsAccepted()"
-                        (change)="onTermsChange($event)"
-                        [attr.aria-label]="msgs['summary.accept']"
-                      />
-                      <span class="checkbox-text">{{ msgs['summary.accept'] }}</span>
-                    </label>
-                  </div>
-                } @else {
-                  <!-- Empty state: no published terms (AC-03.12) -->
-                  <div class="state-empty">
-                    <p>Los términos no están disponibles en este momento.</p>
-                  </div>
-                }
-              }
+      <!-- Block 2: Vehicle data (AC-03.1, RN-03.1, F-03-1.3) -->
+      @if (vehicleEntries().length > 0) {
+        <section class="summary-block" aria-labelledby="section-vehicle">
+          <h2 id="section-vehicle" class="block-heading">{{ msgs['summary.yourVehicle'] }}</h2>
+          <dl class="data-list">
+            @for (entry of vehicleEntries(); track entry.label) {
+              <div class="data-row">
+                <dt class="data-label">{{ entry.label }}</dt>
+                <dd class="data-value">{{ entry.value }}</dd>
+              </div>
             }
-          </section>
+          </dl>
+          <a
+            class="summary-action-link"
+            [attr.href]="editDataUrl()"
+            (click)="goEditData($event)"
+          >{{ msgs['summary.editData'] }}</a>
+        </section>
+      }
 
-          <!-- Payment error (AC-03.6) -->
-          @if (payErrorMessage()) {
-            <div role="alert" class="state-error state-error--payment">
-              <p>{{ payErrorMessage() }}</p>
+      <!-- Block 3: Plan summary (AC-03.1, AC-03.13) -->
+      @if (wizardStore.selectedPlan(); as plan) {
+        <section class="summary-block" aria-labelledby="section-plan">
+          <h2 id="section-plan" class="block-heading">{{ msgs['summary.yourPlan'] }}</h2>
+          <dl class="data-list">
+            <div class="data-row">
+              <dt class="data-label">{{ msgs['summary.yourPlan'] }}</dt>
+              <dd class="data-value">{{ plan.name }}</dd>
+            </div>
+            <div class="data-row">
+              <dt class="data-label">{{ msgs['summary.price'] }}</dt>
+              <dd class="data-value">{{ finalPriceFormatted() }}</dd>
+            </div>
+          </dl>
+          <a
+            class="summary-action-link"
+            [attr.href]="changePlanUrl()"
+            (click)="goChangePlan($event)"
+          >{{ msgs['summary.back'] }}</a>
+        </section>
+      }
+
+      <!-- Block 4: Terms (AC-03.3, AC-03.10, AC-03.11, AC-03.12) -->
+      <section class="summary-block summary-block--terms" aria-labelledby="section-terms">
+        <h2 id="section-terms" class="block-heading">{{ msgs['summary.terms'] }}</h2>
+
+        @switch (pageState()) {
+          @case ('loading') {
+            <div class="state-loading" role="status">
+              <div class="loading-spinner" aria-hidden="true"></div>
+              <p>{{ msgs['summary.loading'] }}</p>
             </div>
           }
 
-          <!-- Pay button (AC-03.4, AC-03.5, AC-03.7, AC-03.14) -->
-          <div class="form-actions">
-            <button
-              type="button"
-              class="btn btn--primary btn--pay"
-              [disabled]="isPayDisabled()"
-              [attr.aria-disabled]="isPayDisabled() ? 'true' : 'false'"
-              [attr.aria-busy]="isSubmitting() ? 'true' : null"
-              (click)="onPay()"
-            >
-              @if (isSubmitting()) {
-                {{ msgs['summary.paying'] }}
-              } @else {
-                {{ msgs['summary.pay'] }}
-              }
-            </button>
-          </div>
+          @case ('error') {
+            <div role="alert" class="state-error">
+              <p>{{ msgs['summary.loadError'] }}</p>
+              <button
+                type="button"
+                class="btn btn--secondary"
+                (click)="loadTerms()"
+              >
+                {{ msgs['summary.loadRetry'] }}
+              </button>
+            </div>
+          }
+
+          @case ('ready') {
+            @if (terms(); as termsDoc) {
+              <div class="terms-content">
+                <app-terms-blocks-renderer [blocks]="termsDoc.body" />
+              </div>
+
+              <!-- Checkbox: terms acceptance (AC-03.4, AC-03.14, G-03.10) -->
+              <div class="terms-accept">
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    class="checkbox-input"
+                    [checked]="termsAccepted()"
+                    (change)="onTermsChange($event)"
+                    [attr.aria-label]="msgs['summary.accept']"
+                  />
+                  <span class="checkbox-text">{{ msgs['summary.accept'] }}</span>
+                </label>
+              </div>
+            } @else {
+              <!-- Empty state: no published terms (AC-03.12) -->
+              <div class="state-empty">
+                <p>Los términos no están disponibles en este momento.</p>
+              </div>
+            }
+          }
         }
+      </section>
+
+      <!-- Payment error (AC-03.6) -->
+      @if (payErrorMessage()) {
+        <div role="alert" class="state-error state-error--payment">
+          <p>{{ payErrorMessage() }}</p>
+        </div>
       }
+
+      <!-- Pay button (AC-03.4, AC-03.5, AC-03.7, AC-03.14) -->
+      <div class="form-actions">
+        <button
+          type="button"
+          class="btn btn--primary btn--pay"
+          [disabled]="isPayDisabled()"
+          [attr.aria-disabled]="isPayDisabled() ? 'true' : 'false'"
+          [attr.aria-busy]="isSubmitting() ? 'true' : null"
+          (click)="onPay()"
+        >
+          @if (isSubmitting()) {
+            {{ msgs['summary.paying'] }}
+          } @else {
+            {{ msgs['summary.pay'] }}
+          }
+        </button>
+      </div>
     </main>
   `,
   styles: [`
@@ -428,33 +398,6 @@ export function maskDocument(doc: string): string {
       min-width: 160px;
     }
 
-    /* ---- Confirmation ---- */
-    .state-confirmed {
-      background: var(--color-success-bg, #f0fff4);
-      border: 1px solid var(--color-success, #38a169);
-      border-radius: var(--radius-sm, 4px);
-      padding: var(--space-lg, 1.5rem);
-      text-align: center;
-    }
-
-    .confirmed-heading {
-      font-size: var(--font-size-xl, 1.5rem);
-      color: var(--color-success, #38a169);
-      margin: 0 0 var(--space-md, 1rem);
-    }
-
-    .quote-number-label {
-      font-weight: 500;
-      margin: 0 0 var(--space-xs, 0.25rem);
-    }
-
-    .quote-number-value {
-      font-size: var(--font-size-lg, 1.25rem);
-      font-weight: 700;
-      font-family: var(--font-mono, monospace);
-      margin: 0;
-    }
-
     /* ---- Responsive (AC-03.15) ---- */
     @media (max-width: 639px) {
       .summary-page {
@@ -519,26 +462,47 @@ export class SummaryComponent implements OnInit, OnDestroy {
     return formatPrice(finalPrice, plan.currency);
   });
 
-  /** Computed: applicant entries with document masked (AC-03.2, AC-03.16, RN-03.11) */
-  readonly applicantEntries = computed(() => {
+  /**
+   * Computed: applicant identity entries (section === 'applicant').
+   * Uses field.label as display label; masks document number fields (F-03-1.3, AC-03.2).
+   */
+  readonly applicantIdentityEntries = computed(() => {
     const applicant = this.wizardStore.applicant();
-    if (!applicant) return [];
+    const fields = this.wizardStore.applicantFieldsSnapshot();
+    if (!applicant || !fields) return [];
 
-    return Object.entries(applicant).map(([key, value]) => {
-      const stringValue = value === null || value === undefined ? '' : String(value);
-      // Mask document number field — NEVER expose the full value in the DOM (RN-03.11, AC-03.16)
-      const maskedValue =
-        key === 'documentNumber' || key === 'rut' || key === 'cedula'
-          ? maskDocument(stringValue)
-          : stringValue;
-      return { key, value: maskedValue };
-    });
+    return fields
+      .filter((f) => f.section === 'applicant' || f.section == null)
+      .map((field) => {
+        const rawValue = applicant[field.key];
+        const stringValue = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+        // Mask document number fields — NEVER expose the full value in the DOM (RN-03.11, AC-03.16, F-03-1.1)
+        const value = isDocumentKey(field.key) ? maskDocument(stringValue) : stringValue;
+        return { label: field.label, value };
+      });
+  });
+
+  /**
+   * Computed: vehicle entries (section === 'vehicle').
+   * Uses field.label as display label (F-03-1.3, RN-03.1).
+   */
+  readonly vehicleEntries = computed(() => {
+    const applicant = this.wizardStore.applicant();
+    const fields = this.wizardStore.applicantFieldsSnapshot();
+    if (!applicant || !fields) return [];
+
+    return fields
+      .filter((f) => f.section === 'vehicle')
+      .map((field) => {
+        const rawValue = applicant[field.key];
+        const stringValue = rawValue === null || rawValue === undefined ? '' : String(rawValue);
+        return { label: field.label, value: stringValue };
+      });
   });
 
   /** Aria announcement for screen readers (AC-03.14) */
   readonly ariaAnnouncement = computed(() => {
-    // Only announce 'loading' — the error (role="alert") and confirmed (role="status aria-live")
-    // containers are live regions themselves; announcing here would create strict-mode duplicates.
+    // Only announce 'loading' — the error (role="alert") containers are live regions themselves.
     return this.pageState() === 'loading' ? this.msgs['summary.loading'] : '';
   });
 
@@ -596,8 +560,7 @@ export class SummaryComponent implements OnInit, OnDestroy {
           this.wizardStore.setQuoteNumber(outcome.quoteNumber);
           // ADR-010 D4-A — replaceUrl prevents back-button to payment
           const country = this.#countryContext.country().toLowerCase();
-          this.pageState.set('confirmed');
-          void this.#router.navigate([`/${country}/paso-3`], { replaceUrl: true });
+          void this.#router.navigate(['/', country, 'confirmacion'], { replaceUrl: true });
         }
       },
       error: () => {

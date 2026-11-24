@@ -5,6 +5,8 @@
  * Inline marks: bold → <strong>, italic → <em>, link → <a> (safe URLs only).
  * Unknown blocks are omitted + logged (ADR-009 D5-A).
  * AC-03.3, AC-03.14
+ *
+ * Moved from features/summary/ to shared/ for reusability (F-03-1.6, ADR-009 §D3).
  */
 import { ChangeDetectionStrategy, Component, input } from '@angular/core';
 import type { Block, InlineNode, TextNode } from '../../core/schemas/terms.schema';
@@ -212,5 +214,4 @@ export class InlineNodeComponent {
 })
 export class TermsBlocksRendererComponent {
   readonly blocks = input.required<Block[]>();
-
 }

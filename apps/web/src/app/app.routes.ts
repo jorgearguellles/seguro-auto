@@ -6,6 +6,7 @@
 import { type Routes } from '@angular/router';
 import { countryGuard } from './country/country.guard';
 import { step2Guard, step3Guard } from './wizard/wizard-step.guard';
+import { confirmacionGuard } from './wizard/confirmacion.guard';
 import { WizardStore } from './wizard/wizard.store';
 
 export const routes: Routes = [
@@ -45,6 +46,15 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/summary/summary.component').then(
             (m) => m.SummaryComponent,
+          ),
+      },
+      {
+        // ADR-010 §D3-A — confirmation route; guard requires quoteNumber in store
+        path: 'confirmacion',
+        canActivate: [confirmacionGuard],
+        loadComponent: () =>
+          import('./features/confirmacion/confirmacion.component').then(
+            (m) => m.ConfirmacionComponent,
           ),
       },
     ],

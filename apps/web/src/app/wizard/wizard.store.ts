@@ -6,12 +6,18 @@
  */
 import { signalStore, withState, withMethods, patchState } from '@ngrx/signals';
 import type { Plan } from '../core/schemas/plan.schema';
+import type { FormField } from '../core/schemas/form-field.schema';
 
 export interface WizardState {
   /** Raw form values from step 1. Dynamic shape from Strapi (ADR-004). */
   applicant: Record<string, unknown> | null;
-  /** Keys present when applicant was saved — used to detect Strapi config changes (AC-01.5, AC-01.4). */
-  applicantFieldsSnapshot: string[] | null;
+  /**
+   * Full FormField objects captured when applicant was saved.
+   * Provides label + section for SummaryComponent (F-03-1.3, RN-03.1).
+   * Replaces the previous `string[]` snapshot — still used for detecting
+   * Strapi config changes (AC-01.5, AC-01.4).
+   */
+  applicantFieldsSnapshot: FormField[] | null;
   /** Selected plan documentId from step 2 (RN-02.5, AC-02.5). */
   selectedPlanId: string | null;
   /** Selected plan object from step 2 (AC-02.5, AC-02.7). */
@@ -32,10 +38,11 @@ export const WizardStore = signalStore(
     quoteNumber: null,
   }),
   withMethods((store) => ({
-    setApplicant(values: Record<string, unknown>, fieldKeys: string[]): void {
+    /** Saves applicant form values and the full FormField objects (label + section) for SummaryComponent (F-03-1.3). */
+    setApplicant(values: Record<string, unknown>, fields: FormField[]): void {
       patchState(store, {
         applicant: values,
-        applicantFieldsSnapshot: fieldKeys,
+        applicantFieldsSnapshot: fields,
       });
     },
     clearApplicant(): void {

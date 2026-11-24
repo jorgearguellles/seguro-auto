@@ -245,18 +245,20 @@ test.describe('AC-03.1 Resumen completo', () => {
     expect(hasDollar).toBe(true);
   });
 
-  test('AC-03.1 paso-3 shows three sections: datos, plan and términos', async ({
+  test('AC-03.1 paso-3 shows three data blocks: datos titular, datos vehículo and plan (RN-03.1, F-03-1.3)', async ({
     page,
   }) => {
     await mockAll(page);
     await completePaso1(page);
     await completePaso2(page);
 
-    // "Tus datos" section heading
+    // "Tus datos" section heading (applicant identity block)
     await expect(page.getByRole('heading', { name: 'Tus datos' })).toBeVisible();
+    // "Datos del vehículo" section heading (vehicle block)
+    await expect(page.getByRole('heading', { name: 'Datos del vehículo' })).toBeVisible();
     // "Plan elegido" section heading
     await expect(page.getByRole('heading', { name: 'Plan elegido' })).toBeVisible();
-    // "Términos y condiciones" section heading
+    // "Términos y condiciones" section heading (fourth block)
     await expect(
       page.getByRole('heading', { name: 'Términos y condiciones' }),
     ).toBeVisible();
@@ -677,6 +679,18 @@ test.describe('AC-03.9 Guard redirige si wizard incompleto', () => {
     // We should already be on paso-3 after completePaso2
     await expect(page).toHaveURL(/paso-3/);
   });
+
+  test('AC-03.9 navigating directly to /co/confirmacion without quoteNumber redirects to paso-1 (confirmacionGuard, F-03-1.4)', async ({
+    page,
+  }) => {
+    await mockAll(page);
+    // Navigate directly to confirmacion without having paid — no quoteNumber in store
+    await page.goto('/co/confirmacion');
+
+    // Guard redirects to paso-1 (quoteNumber is null)
+    await expect(page).not.toHaveURL(/confirmacion/);
+    await expect(page).toHaveURL(/paso-1/);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -981,10 +995,19 @@ test.describe('AC-03.14 Accesibilidad — axe audit y teclado', () => {
       // Press Enter to pay
       await page.keyboard.press('Enter');
 
-      // Confirmation appears
+      // Confirmation appears (now on /confirmacion route — F-03-1.4)
       await expect(
         page.getByText('Tu cotización ha sido confirmada'),
       ).toBeVisible({ timeout: 10_000 });
+
+      // AC-03.14: Focus must land on the confirmed heading (F-03-1.7)
+      // The ConfirmacionComponent calls focus() on the h2#confirmed-title via ngAfterViewInit
+      const activeTagOrRole = await page.evaluate(() => {
+        const el = document.activeElement;
+        return el?.getAttribute('id') ?? el?.tagName?.toLowerCase() ?? '';
+      });
+      // h2 with id="confirmed-title" should be focused, or at minimum an h2
+      expect(activeTagOrRole).toMatch(/confirmed-title|h2/i);
 
       // Run axe on confirmation state
       await runAxe(page);
@@ -1159,6 +1182,26 @@ test.describe('AC-03.16 Documento completo no aparece en el DOM', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('AC-03.17 Tras confirmación, navegar atrás no vuelve al formulario de pago', () => {
+  test('AC-03.17 after successful payment URL is /co/confirmacion (F-03-1.4, ADR-010 D4-A)', async ({
+    page,
+  }) => {
+    await mockAll(page);
+    await completePaso1(page);
+    await completePaso2(page);
+
+    await expect(page.getByRole('status')).not.toBeVisible();
+    await page.getByLabel('Acepto los términos y condiciones').check();
+    await page.getByRole('button', { name: 'Pagar' }).click();
+
+    // Wait for confirmation screen on the new /confirmacion route
+    await expect(
+      page.getByText('Tu cotización ha sido confirmada'),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // URL should now be /co/confirmacion (not still /co/paso-3)
+    await expect(page).toHaveURL(/confirmacion/);
+  });
+
   test('AC-03.17 after successful payment, pressing browser back does not show payment form', async ({
     page,
   }) => {
@@ -1178,16 +1221,13 @@ test.describe('AC-03.17 Tras confirmación, navegar atrás no vuelve al formular
     // Navigate back via browser history
     await page.goBack();
 
-    // Must NOT show the payment form again (replaceUrl means paso-3 URL was replaced)
-    // The guard should redirect to paso-1 since wizard state is in "confirmed" or the
-    // history entry for paso-3 was replaced, sending the user to paso-2 or paso-1.
+    // Must NOT show the payment form again (replaceUrl means paso-3 URL was replaced
+    // with confirmacion; going back skips paso-3 — ADR-010 D4-A, F-03-1.4).
+    // The confirmacionGuard redirects to paso-1 if quoteNumber is null (store still alive
+    // in same /:country branch, so guard passes — the history entry from before paso-3 is loaded).
     await expect(page.getByText('Tu cotización ha sido confirmada')).not.toBeVisible();
 
-    // Should land on paso-1 or paso-2 (the guard resets the flow)
-    await expect(page).toHaveURL(/paso-[123]/);
-
-    // The payment form (Pagar button) must NOT be reachable after going back
-    // If redirected to paso-1 or paso-2, the Pagar button is simply not present
+    // Should land somewhere in the wizard but NOT the Pagar button
     await expect(page.getByRole('button', { name: 'Pagar' })).not.toBeVisible();
   });
 });
