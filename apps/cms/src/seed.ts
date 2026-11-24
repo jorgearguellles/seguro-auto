@@ -341,6 +341,178 @@ const FIELDS_CL: FormFieldSeed[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Terms data — Colombia (CO) and Chile (CL)
+// [AC-03.3] One published terms document per country.
+// [ADR-009] body uses Strapi 5 Blocks; effectiveDate for version ordering.
+// ---------------------------------------------------------------------------
+
+interface TermsSeed {
+  title: string;
+  body: unknown[];
+  effectiveDate: string;
+}
+
+const TERMS_CO: TermsSeed = {
+  title: 'Términos y condiciones — Colombia',
+  effectiveDate: '2026-01-01',
+  body: [
+    {
+      type: 'heading',
+      level: 2,
+      children: [{ type: 'text', text: '1. Objeto del contrato' }],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          type: 'text',
+          text: 'El presente documento establece los términos y condiciones bajo los cuales la aseguradora ficticia AutoSeguro S.A. (en adelante, "la Compañía") ofrece la póliza de seguro de automóvil al titular (en adelante, "el Asegurado"). Al aceptar estos términos, el Asegurado declara haber leído, comprendido y aceptado en su totalidad las condiciones aquí descritas.',
+        },
+      ],
+    },
+    {
+      type: 'heading',
+      level: 2,
+      children: [{ type: 'text', text: '2. Cobertura y exclusiones' }],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          type: 'text',
+          text: 'La cobertura aplica únicamente para vehículos con placa colombiana vigente, registrados ante el ',
+        },
+        { type: 'text', text: 'RUNT', bold: true },
+        {
+          type: 'text',
+          text: ', y cuyo modelo no supere los veinte (20) años de antigüedad. Quedan expresamente excluidos de cobertura los daños causados por uso del vehículo en competencias, pruebas de velocidad, o fuera de las vías autorizadas por el Ministerio de Transporte.',
+        },
+      ],
+    },
+    {
+      type: 'heading',
+      level: 2,
+      children: [{ type: 'text', text: '3. Vigencia y renovación' }],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          type: 'text',
+          text: 'La póliza tiene una vigencia de doce (12) meses contados desde la fecha de expedición. La renovación automática opera treinta (30) días antes del vencimiento, salvo que el Asegurado notifique por escrito su intención de no renovar. Los valores de renovación se ajustan conforme al ',
+        },
+        { type: 'text', text: 'IPC certificado por el DANE', italic: true },
+        { type: 'text', text: ' del año inmediatamente anterior.' },
+      ],
+    },
+    {
+      type: 'list',
+      format: 'unordered',
+      children: [
+        {
+          type: 'list-item',
+          children: [
+            { type: 'text', text: 'El Asegurado debe reportar cualquier siniestro dentro de las 48 horas siguientes al evento.' },
+          ],
+        },
+        {
+          type: 'list-item',
+          children: [
+            { type: 'text', text: 'La Compañía dispone de un plazo máximo de 30 días hábiles para liquidar el siniestro.' },
+          ],
+        },
+        {
+          type: 'list-item',
+          children: [
+            { type: 'text', text: 'Las controversias se resolverán ante la Superintendencia Financiera de Colombia.' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+const TERMS_CL: TermsSeed = {
+  title: 'Términos y condiciones — Chile',
+  effectiveDate: '2026-01-01',
+  body: [
+    {
+      type: 'heading',
+      level: 2,
+      children: [{ type: 'text', text: '1. Objeto del contrato' }],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          type: 'text',
+          text: 'El presente documento regula la relación contractual entre AutoSeguro Chile SpA (en adelante, "la Compañía") y el titular del seguro de automóvil (en adelante, "el Asegurado"). La aceptación de estos términos implica el conocimiento y conformidad del Asegurado con todas las condiciones aquí establecidas, de conformidad con la Ley N° 20.667 que regula el contrato de seguro en Chile.',
+        },
+      ],
+    },
+    {
+      type: 'heading',
+      level: 2,
+      children: [{ type: 'text', text: '2. Cobertura y exclusiones' }],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          type: 'text',
+          text: 'La cobertura aplica para vehículos con patente chilena vigente inscritos en el ',
+        },
+        { type: 'text', text: 'Registro de Vehículos Motorizados del SRCeI', bold: true },
+        {
+          type: 'text',
+          text: ', con no más de veinte (20) años de antigüedad desde su año de fabricación. Se excluyen los daños derivados del uso del vehículo en competencias deportivas, rallies o cualquier actividad no autorizada por el Ministerio de Transportes y Telecomunicaciones.',
+        },
+      ],
+    },
+    {
+      type: 'heading',
+      level: 2,
+      children: [{ type: 'text', text: '3. Vigencia y renovación' }],
+    },
+    {
+      type: 'paragraph',
+      children: [
+        {
+          type: 'text',
+          text: 'La póliza tiene una vigencia de doce (12) meses desde la fecha de emisión. Se renueva automáticamente salvo aviso en contrario con al menos treinta (30) días de anticipación. Los valores se reajustan según la ',
+        },
+        { type: 'text', text: 'variación del IPC informado por el INE', italic: true },
+        { type: 'text', text: ' correspondiente al año anterior a la renovación.' },
+      ],
+    },
+    {
+      type: 'list',
+      format: 'unordered',
+      children: [
+        {
+          type: 'list-item',
+          children: [
+            { type: 'text', text: 'El Asegurado debe denunciar el siniestro dentro de las 48 horas de ocurrido el evento.' },
+          ],
+        },
+        {
+          type: 'list-item',
+          children: [
+            { type: 'text', text: 'La Compañía tiene un plazo máximo de 30 días hábiles para resolver la liquidación.' },
+          ],
+        },
+        {
+          type: 'list-item',
+          children: [
+            { type: 'text', text: 'Las disputas se someterán a la Comisión para el Mercado Financiero (CMF).' },
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+// ---------------------------------------------------------------------------
 // Plan data — Colombia (CO)
 // ---------------------------------------------------------------------------
 
@@ -633,6 +805,48 @@ async function seedPlans(
   }
 }
 
+async function seedTerms(
+  strapi: Core.Strapi,
+  termsSeed: TermsSeed,
+  countryDocId: string,
+  countryCode: string
+): Promise<void> {
+  // Idempotency: find by country documentId (one document per country is the target).
+  // Check both published and draft to avoid creating duplicates over any existing state.
+  const existingPublished = await strapi.documents('api::terms.terms').findFirst({
+    filters: { country: { $eq: countryDocId } },
+    status: 'published',
+  });
+
+  if (existingPublished) {
+    strapi.log.info(`[seed] terms (${countryCode}) already published (documentId: ${existingPublished.documentId}), skipping.`);
+    return;
+  }
+
+  const existingDraft = await strapi.documents('api::terms.terms').findFirst({
+    filters: { country: { $eq: countryDocId } },
+    status: 'draft',
+  });
+
+  if (existingDraft) {
+    strapi.log.info(`[seed] terms (${countryCode}) exists as draft (documentId: ${existingDraft.documentId}), skipping.`);
+    return;
+  }
+
+  const created = await strapi.documents('api::terms.terms').create({
+    data: {
+      title: termsSeed.title,
+      body: termsSeed.body,
+      effectiveDate: termsSeed.effectiveDate,
+      country: countryDocId,
+    },
+  });
+
+  await strapi.documents('api::terms.terms').publish({ documentId: created.documentId });
+
+  strapi.log.info(`[seed] terms (${countryCode}) created and published (documentId: ${created.documentId}).`);
+}
+
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
@@ -646,17 +860,19 @@ export async function seed(strapi: Core.Strapi): Promise<void> {
   const clDocId = countryDocIds.get('CL');
 
   if (!coDocId) {
-    strapi.log.error('[seed] Could not find or create CO country. Skipping CO form fields and plans.');
+    strapi.log.error('[seed] Could not find or create CO country. Skipping CO form fields, plans and terms.');
   } else {
     await seedFormFields(strapi, FIELDS_CO, coDocId, 'CO');
     await seedPlans(strapi, PLANS_CO, coDocId, 'CO');
+    await seedTerms(strapi, TERMS_CO, coDocId, 'CO');
   }
 
   if (!clDocId) {
-    strapi.log.error('[seed] Could not find or create CL country. Skipping CL form fields and plans.');
+    strapi.log.error('[seed] Could not find or create CL country. Skipping CL form fields, plans and terms.');
   } else {
     await seedFormFields(strapi, FIELDS_CL, clDocId, 'CL');
     await seedPlans(strapi, PLANS_CL, clDocId, 'CL');
+    await seedTerms(strapi, TERMS_CL, clDocId, 'CL');
   }
 
   strapi.log.info('[seed] Seed complete.');

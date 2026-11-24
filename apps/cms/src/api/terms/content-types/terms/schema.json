@@ -1,0 +1,32 @@
+{
+  "kind": "collectionType",
+  "collectionName": "terms_documents",
+  "info": {
+    "singularName": "terms",
+    "pluralName": "terms",
+    "displayName": "Terms",
+    "description": "Terms and conditions per country with blocks rich text body and effective date (ADR-009, ADR-011, AC-03.3, AC-03.10, AC-03.11, AC-03.12)"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "body": {
+      "type": "blocks"
+    },
+    "effectiveDate": {
+      "type": "date",
+      "required": true
+    },
+    "country": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::country.country"
+    }
+  }
+}
