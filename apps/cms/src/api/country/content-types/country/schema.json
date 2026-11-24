@@ -1,0 +1,38 @@
+{
+  "kind": "collectionType",
+  "collectionName": "countries",
+  "info": {
+    "singularName": "country",
+    "pluralName": "countries",
+    "displayName": "Country",
+    "description": "Supported countries for the insurance wizard (CO and CL)"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "code": {
+      "type": "enumeration",
+      "enum": ["CO", "CL"],
+      "required": true,
+      "unique": true
+    },
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "locale": {
+      "type": "string",
+      "required": true
+    },
+    "currency": {
+      "type": "enumeration",
+      "enum": ["COP", "CLP"],
+      "required": true
+    },
+    "termsAndConditions": {
+      "type": "blocks"
+    }
+  }
+}

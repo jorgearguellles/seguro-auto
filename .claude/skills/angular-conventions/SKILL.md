@@ -62,8 +62,9 @@ export class PlanCardComponent {
 
 ## 5. Estado del wizard
 
-- `WizardStore` con signals: `applicant`, `selectedPlanId`, `quote`.
-- Persistencia en `sessionStorage` con clave `wizard:v1:<country>`; al leer, si la versión o la forma no coinciden, se descarta.
+- `WizardStore` con `@ngrx/signals` `SignalStore`: `applicant`, `selectedPlanId`, `quote`. (ADR-005)
+- **Solo en memoria**: no se escribe en `localStorage` ni `sessionStorage`. Los datos son PII (RUT, cédula, fecha de nacimiento). El store se destruye al completar o abandonar el flujo.
+- Provisto a nivel de la rama `/:country`; un cambio de país destruye el store y crea uno nuevo.
 - Guards por paso: no se entra a `planes` sin paso 1 válido, ni a `resumen` sin plan.
 - Tras un pago exitoso, se limpia el estado.
 

@@ -61,34 +61,44 @@ GET /api/countries?filters[code][$eq]=CO&fields[0]=termsAndConditions&fields[1]=
 ```
 Sin `status` en la query, la API REST de Strapi 5 devuelve solo lo **publicado**. No usar `populate=*`.
 
-## 3. Permisos del rol Public — en código
+## 3. Permisos del rol Public — en código (ADR-003)
+
+`PUBLIC_READ_V1` = solo `country.find` + `form-field.find`. `plan.find` se agrega en el ADR de US-02. Agregar un permiso requiere nuevo ADR o supersede de ADR-003.
 
 ```ts
 // apps/cms/src/index.ts
-const PUBLIC_READ = ['api::country.country', 'api::form-field.form-field', 'api::plan.plan'];
+const PUBLIC_READ_V1: readonly string[] = [
+  'api::country.country.find',
+  'api::form-field.form-field.find',
+  // plan.find → ADR de US-02
+];
+
+async function ensurePublicPermissions(strapi) {
+  const publicRole = await strapi.db
+    .query('plugin::users-permissions.role')
+    .findOne({ where: { type: 'public' } });
+
+  for (const action of PUBLIC_READ_V1) {
+    const exists = await strapi.db
+      .query('plugin::users-permissions.permission')
+      .findOne({ where: { action, role: publicRole.id } });
+    if (!exists) {
+      await strapi.db
+        .query('plugin::users-permissions.permission')
+        .create({ data: { action, role: publicRole.id } });
+    }
+  }
+}
 
 export default {
   async bootstrap({ strapi }) {
-    const publicRole = await strapi.db
-      .query('plugin::users-permissions.role')
-      .findOne({ where: { type: 'public' } });
-
-    for (const uid of PUBLIC_READ) {
-      const action = `${uid}.find`;
-      const exists = await strapi.db
-        .query('plugin::users-permissions.permission')
-        .findOne({ where: { action, role: publicRole.id } });
-      if (!exists) {
-        await strapi.db
-          .query('plugin::users-permissions.permission')
-          .create({ data: { action, role: publicRole.id } });
-      }
-    }
+    await ensurePublicPermissions(strapi);
     await seed(strapi);
   },
 };
 ```
-Nunca `findOne`, `create`, `update` ni `delete` para Public salvo ADR que lo justifique.
+
+Modo **aditivo**: el bootstrap no borra permisos añadidos a mano en el admin (aceptado para v1). Nunca `findOne`, `create`, `update` ni `delete` para Public salvo ADR que lo justifique.
 
 ## 4. Seed idempotente
 
@@ -102,7 +112,7 @@ Nunca `findOne`, `create`, `update` ni `delete` para Public salvo ADR que lo jus
 
 1. ¿Está justificado por una spec aprobada?
 2. Schema + componentes.
-3. ¿Necesita lectura pública? → agregar a `PUBLIC_READ` + nota en ADR-003.
+3. ¿Necesita lectura pública? → agregar a `PUBLIC_READ_VN` en `bootstrap()` + nuevo ADR o supersede de ADR-003.
 4. Seed CO y CL.
 5. Verificación con `curl` de lo que expone.
 6. Actualizar esta skill.

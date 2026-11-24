@@ -1,0 +1,35 @@
+{
+  "collectionName": "components_field_validations",
+  "info": {
+    "displayName": "Validation",
+    "description": "A validation rule for a form field (ADR-001 Option B)",
+    "icon": "check-circle"
+  },
+  "options": {},
+  "attributes": {
+    "rule": {
+      "type": "enumeration",
+      "enum": [
+        "required",
+        "min",
+        "max",
+        "minLength",
+        "maxLength",
+        "pattern",
+        "rut",
+        "cedula_co",
+        "placa_co",
+        "patente_cl",
+        "anio_vehiculo",
+        "mayor_edad"
+      ],
+      "required": true
+    },
+    "params": {
+      "type": "json"
+    },
+    "errorMessage": {
+      "type": "string"
+    }
+  }
+}

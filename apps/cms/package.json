@@ -1,0 +1,39 @@
+{
+  "name": "seguro-auto-cms",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "build": "strapi build",
+    "strapi": "strapi"
+  },
+  "dependencies": {
+    "@strapi/strapi": "^5.0.0",
+    "@strapi/plugin-users-permissions": "^5.0.0",
+    "@strapi/plugin-cloud": "^5.0.0",
+    "better-sqlite3": "^9.4.3",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-router-dom": "^6.0.0",
+    "styled-components": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0 <=22.x.x",
+    "npm": ">=6.0.0"
+  },
+  "strapi": {
+    "uuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+  },
+  "allowScripts": {
+    "better-sqlite3@9.6.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.25.12": true,
+    "@swc/core@1.16.22": true,
+    "core-js-pure@3.51.0": true,
+    "fsevents@2.3.3": true
+  }
+}

@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Coverage
+coverage/
+
+# Angular CLI cache
+.angular/
+
+# IDE
+.vscode/
+.idea/
